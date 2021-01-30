@@ -1,7 +1,6 @@
 module Playground exposing
-    ( picture, animation, game
-    , componentInit, componentView, componentUpdate, componentSubscriptions, Game, Msg
-    , Shape, circle, oval, square, rectangle, triangle, pentagon, hexagon, octagon, polygon
+    ( componentInit, componentView, componentUpdate, componentSubscriptions, Game, Msg(..)
+    , Shape, circle, oval, square, rectangle, triangle, pentagon, hexagon, octagon, polygon, drawing
     , words
     , image
     , move, moveUp, moveDown, moveLeft, moveRight, moveX, moveY
@@ -15,14 +14,13 @@ module Playground exposing
     , white, lightGrey, grey, darkGrey, lightCharcoal, charcoal, darkCharcoal, black
     , lightGray, gray, darkGray
     , Number
+    , renderColor
     )
 
 {-|
 
 
 # Playgrounds
-
-@docs picture, animation, game, gameElement
 
 
 # Playground component parts
@@ -32,7 +30,7 @@ module Playground exposing
 
 # Shapes
 
-@docs Shape, circle, oval, square, rectangle, triangle, pentagon, hexagon, octagon, polygon
+@docs Shape, circle, oval, square, rectangle, triangle, pentagon, hexagon, octagon, polygon, drawing
 
 
 # Words
@@ -104,6 +102,7 @@ module Playground exposing
 import Browser
 import Browser.Dom as Dom
 import Browser.Events as E
+import Cartoon
 import Html
 import Html.Attributes as H
 import Json.Decode as D
@@ -112,49 +111,6 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Task
 import Time
-
-
-
--- PICTURE
-
-
-{-| Make a picture! Here is a picture of a triangle with an eyeball:
-
-    import Playground exposing (..)
-
-    main =
-        picture
-            [ triangle green 150
-            , circle white 40
-            , circle black 10
-            ]
-
--}
-picture : List Shape -> Program () Screen ( Int, Int )
-picture shapes =
-    let
-        init () =
-            ( toScreen 600 600, Cmd.none )
-
-        view screen =
-            { title = "Playground"
-            , body = [ render screen shapes ]
-            }
-
-        update ( width, height ) _ =
-            ( toScreen (toFloat width) (toFloat height)
-            , Cmd.none
-            )
-
-        subscriptions _ =
-            E.onResize Tuple.pair
-    in
-    Browser.document
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        }
 
 
 
@@ -178,6 +134,7 @@ type alias Computer =
     , keyboard : Keyboard
     , screen : Screen
     , time : Time
+    , clicked : Maybe Cartoon.Part
     }
 
 
@@ -531,199 +488,6 @@ toFrac period (Time posix) =
     toFloat (modBy (round p) ms) / p
 
 
-
--- ANIMATION
-
-
-{-| Create an animation!
-
-Once you get comfortable using [`picture`](#picture) to layout shapes, you can
-try out an `animation`. Here is square that zigzags back and forth:
-
-    import Playground exposing (..)
-
-    main =
-        animation view
-
-    view time =
-        [ square blue 40
-            |> moveX (zigzag -100 100 2 time)
-        ]
-
-We need to define a `view` to make our animation work.
-
-Within `view` we can use functions like [`spin`](#spin), [`wave`](#wave),
-and [`zigzag`](#zigzag) to move and rotate our shapes.
-
--}
-animation : (Time -> List Shape) -> Program () Animation Msg
-animation viewFrame =
-    let
-        init () =
-            ( Animation E.Visible (toScreen 600 600) (Time (Time.millisToPosix 0))
-            , Task.perform GotViewport Dom.getViewport
-            )
-
-        view (Animation _ screen time) =
-            { title = "Playground"
-            , body = [ render screen (viewFrame time) ]
-            }
-
-        update msg model =
-            ( animationUpdate msg model
-            , Cmd.none
-            )
-
-        subscriptions (Animation visibility _ _) =
-            case visibility of
-                E.Hidden ->
-                    E.onVisibilityChange VisibilityChanged
-
-                E.Visible ->
-                    animationSubscriptions
-    in
-    Browser.document
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        }
-
-
-type Animation
-    = Animation E.Visibility Screen Time
-
-
-animationSubscriptions : Sub Msg
-animationSubscriptions =
-    Sub.batch
-        [ E.onResize Resized
-        , E.onAnimationFrame Tick
-        , E.onVisibilityChange VisibilityChanged
-        ]
-
-
-animationUpdate : Msg -> Animation -> Animation
-animationUpdate msg ((Animation v s t) as state) =
-    case msg of
-        Tick posix ->
-            Animation v s (Time posix)
-
-        VisibilityChanged vis ->
-            Animation vis s t
-
-        GotViewport { viewport } ->
-            Animation v (toScreen viewport.width viewport.height) t
-
-        Resized w h ->
-            Animation v (toScreen (toFloat w) (toFloat h)) t
-
-        KeyChanged _ _ ->
-            state
-
-        MouseMove _ _ ->
-            state
-
-        MouseClick ->
-            state
-
-        MouseButton _ ->
-            state
-
-
-
--- GAME
-
-
-{-| Create a game!
-
-Once you get comfortable with [`animation`](#animation), you can try making a
-game with the keyboard and mouse. Here is an example of a green square that
-just moves to the right:
-
-    import Playground exposing (..)
-
-    main =
-        game view update 0
-
-    view computer offset =
-        [ square green 40
-            |> moveRight offset
-        ]
-
-    update computer offset =
-        offset + 0.03
-
-This shows the three important parts of a game:
-
-1.  `memory` - makes it possible to store information. So with our green square,
-    we save the `offset` in memory. It starts out at `0`.
-2.  `view` - lets us say which shapes to put on screen. So here we move our
-    square right by the `offset` saved in memory.
-3.  `update` - lets us update the memory. We are incrementing the `offset` by
-    a tiny amount on each frame.
-
-The `update` function is called about 60 times per second, so our little
-changes to `offset` start to add up pretty quickly!
-
-This game is not very fun though! Making a `game` also gives you access to the
-[`Computer`](#Computer), so you can use information about the [`Mouse`](#Mouse)
-and [`Keyboard`](#Keyboard) to make it interactive! So here is a red square that
-moves based on the arrow keys:
-
-    import Playground exposing (..)
-
-    main =
-        game view update ( 0, 0 )
-
-    view computer ( x, y ) =
-        [ square red 40
-            |> move x y
-        ]
-
-    update computer ( x, y ) =
-        ( x + toX computer.keyboard
-        , y + toY computer.keyboard
-        )
-
-Notice that in the `update` we use information from the keyboard to update the
-`x` and `y` values. These building blocks let you make pretty fancy games!
-
--}
-game : (Computer -> memory -> List Shape) -> (Computer -> memory -> memory) -> memory -> Program () (Game memory) Msg
-game viewMemory updateMemory initialMemory =
-    let
-        init () =
-            ( Game E.Visible initialMemory initialComputer
-            , Task.perform GotViewport Dom.getViewport
-            )
-
-        view (Game _ memory computer) =
-            { title = "Playground"
-            , body = [ render computer.screen (viewMemory computer memory) ]
-            }
-
-        update msg model =
-            ( gameUpdate updateMemory msg model
-            , Cmd.none
-            )
-
-        subscriptions (Game visibility _ _) =
-            case visibility of
-                E.Hidden ->
-                    E.onVisibilityChange VisibilityChanged
-
-                E.Visible ->
-                    gameSubscriptions
-    in
-    Browser.document
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        }
-
-
 componentInit : memory -> ( Game memory, Cmd Msg )
 componentInit initialMemory =
     ( Game E.Visible initialMemory initialComputer
@@ -733,7 +497,7 @@ componentInit initialMemory =
 
 componentView : Game memory -> (Computer -> memory -> List Shape) -> Html.Html Msg
 componentView (Game _ memory computer) viewMemory =
-    render computer.screen (viewMemory computer memory)
+    render Clicked computer.screen (viewMemory computer memory)
 
 
 componentUpdate : (Computer -> memory -> memory) -> Msg -> Game memory -> ( Game memory, Cmd Msg )
@@ -759,6 +523,7 @@ initialComputer =
     , keyboard = emptyKeyboard
     , screen = toScreen 600 600
     , time = Time (Time.millisToPosix 0)
+    , clicked = Nothing
     }
 
 
@@ -798,6 +563,7 @@ type Msg
     | MouseMove Float Float
     | MouseClick
     | MouseButton Bool
+    | Clicked Cartoon.Part
 
 
 gameUpdate : (Computer -> memory -> memory) -> Msg -> Game memory -> Game memory
@@ -843,6 +609,9 @@ gameUpdate updateMemory msg (Game vis memory computer) =
                     | keyboard = emptyKeyboard
                     , mouse = Mouse computer.mouse.x computer.mouse.y False False
                 }
+
+        Clicked part ->
+            Game vis memory { computer | clicked = Just part }
 
 
 
@@ -970,6 +739,7 @@ type Form
     | Image Number Number String
     | Words Color String
     | Group (List Shape)
+    | Drawing Cartoon.Part
 
 
 {-| Make circles:
@@ -1201,6 +971,11 @@ them as a group. Maybe you want to put a bunch of stars in the sky:
 group : List Shape -> Shape
 group shapes =
     Shape 0 0 0 1 1 (Group shapes)
+
+
+drawing : Cartoon.Part -> Shape
+drawing d =
+    Shape 0 0 0 1 1 (Drawing d)
 
 
 
@@ -1659,8 +1434,8 @@ colorClamp number =
 -- RENDER
 
 
-render : Screen -> List Shape -> Html.Html msg
-render screen shapes =
+render : (Cartoon.Part -> msg) -> Screen -> List Shape -> Html.Html msg
+render clickMsg screen shapes =
     let
         w =
             String.fromFloat screen.width
@@ -1682,7 +1457,7 @@ render screen shapes =
         , width "100%"
         , height "100%"
         ]
-        (List.map renderShape shapes)
+        (List.map (renderShape clickMsg) shapes)
 
 
 
@@ -1690,8 +1465,8 @@ render screen shapes =
 --
 
 
-renderShape : Shape -> Svg msg
-renderShape (Shape x y angle s alpha form) =
+renderShape : (Cartoon.Part -> msg) -> Shape -> Svg msg
+renderShape clickMsg (Shape x y angle s alpha form) =
     case form of
         Circle color radius ->
             renderCircle color radius x y angle s alpha
@@ -1716,7 +1491,11 @@ renderShape (Shape x y angle s alpha form) =
 
         Group shapes ->
             g (transform (renderTransform x y angle s) :: renderAlpha alpha)
-                (List.map renderShape shapes)
+                (List.map (renderShape clickMsg) shapes)
+
+        Drawing part ->
+            g (transform (renderTransform x y angle s) :: renderAlpha alpha)
+                [ Cartoon.part clickMsg part Cartoon.colors.girl ]
 
 
 
