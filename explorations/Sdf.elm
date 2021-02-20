@@ -249,9 +249,10 @@ float sphereSDF(vec3 p) {
  */
 float sceneSDF(vec3 samplePoint) {
     float sphereDist = sphereSDF(samplePoint / 1.2) * 1.2;
-    float cubeDist = cubeSDF(samplePoint);
+    float cubeDist = cubeSDF(samplePoint + vec3(0.0, sin(iGlobalTime), 0.0));
     return intersectSDF(cubeDist, sphereDist);
 }
+
 
 /**
  * Return the shortest distance from the eyepoint to the scene surface along
