@@ -1,5 +1,6 @@
 module Cartoon.System9Tan exposing
-    ( girl
+    ( attribution
+    , girl
     , part
     )
 
@@ -8,6 +9,13 @@ import Cartoon.Part as Part exposing (Part(..))
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
+
+
+attribution =
+    { title = "Mac System 9 tan"
+    , author = "BellaCielo"
+    , url = "https://www.deviantart.com/bellacielo/art/Mac-System-9-tan-141887857"
+    }
 
 
 part : (Fabric -> Part -> msg) -> Part -> Fabric.Coloring -> Fabric -> Svg msg
@@ -314,7 +322,7 @@ part msg p coloring fabric =
 
 
 girl msg parts coloring fabric =
-    Svg.g [ id "layer1", Svg.Attributes.title "Drawing by BellaCielo: https://www.deviantart.com/bellacielo/art/Mac-System-9-tan-141887857" ]
+    Svg.g [ id "layer1", Svg.Attributes.title <| String.join "" [ "Drawing by ", attribution.author, ": ", attribution.url ] ]
         [ Fabric.defs
         , Svg.path
             [ Part.show Skirt parts
