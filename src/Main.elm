@@ -2,14 +2,21 @@ module Main exposing (main)
 
 import Browser
 import Cartoon
+import Cartoon.Fabric
+import Cartoon.Part
 import Html exposing (Html)
 import Html.Attributes as Attr
 import Playground exposing (..)
 
 
+type alias Cloth =
+    Maybe ( Cartoon.Fabric, String )
+
+
 type alias Model =
     { playground : Playground.Game {}
-    , parts : List Cartoon.Part
+    , parts : List ( Cartoon.Part, Cloth )
+    , cloth : Cloth
     }
 
 
@@ -23,7 +30,7 @@ main =
             Playground.componentInit {}
     in
     Browser.document
-        { init = \() -> ( { playground = p, parts = [] }, Cmd.map PlaygroundMsg cmd )
+        { init = \() -> ( { playground = p, parts = [], cloth = Nothing }, Cmd.map PlaygroundMsg cmd )
         , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
@@ -39,20 +46,20 @@ view model =
     { title = "Jana's Poppenspel"
     , body =
         [ background pink
-            [ Html.map PlaygroundMsg <| Playground.componentView model.playground (scene model.parts)
+            [ Html.map PlaygroundMsg <| Playground.componentView model.playground (scene model.cloth model.parts)
             ]
         ]
     }
 
 
-scene ongedragen computer memory =
+scene geselecteerdeStof ongedragen computer memory =
     let
         metKleren =
             List.filter
-                (\part -> not <| List.member part ongedragen)
-                Cartoon.allParts
+                (\part -> not <| List.member ( part, Nothing ) ongedragen)
+                Cartoon.Part.list
     in
-    [ bed, kast (kleding ongedragen), girl metKleren, rectangle red 10 10 ]
+    [ bed, kast (kleding ongedragen), stoffen geselecteerdeStof, girl metKleren, rectangle red 10 10 ]
 
 
 clicked memory =
@@ -64,13 +71,13 @@ clicked memory =
 
                 Just p ->
                     case p of
-                        Cartoon.Skirt ->
+                        Cartoon.Part.Skirt ->
                             "Skirt"
 
-                        Cartoon.Shirt ->
+                        Cartoon.Part.Shirt ->
                             "Shirt"
 
-                        Cartoon.Boots ->
+                        Cartoon.Part.Boots ->
                             "Boots"
 
                         _ ->
@@ -109,42 +116,91 @@ kast inhoud =
         |> moveUp 80
 
 
+
+--winkel =
+--    een plek waar je spulen kan koopen
+
+
 girl kledingSelectie =
-    drawing (Cartoon.Girl kledingSelectie)
+    drawing (Cartoon.Part.Girl kledingSelectie) Cartoon.Fabric.Solid
         |> moveLeft 300
         |> scale 1.2
 
 
-kleding selectie =
-    let
-        alles =
-            [ ( Cartoon.Skirt
-              , drawing Cartoon.Skirt
-                    |> moveLeft 50
-                    |> moveUp 20
-              )
-            , ( Cartoon.Boots
-              , drawing Cartoon.Boots
-                    |> moveRight 100
-                    |> moveUp 10
-              )
-            , ( Cartoon.Shirt
-              , drawing Cartoon.Shirt
-                    |> moveRight 50
-                    |> moveUp 70
-              )
+stof fabric color currentCloth =
+    case currentCloth of
+        Nothing ->
+            drawing (Cartoon.Part.Cloth color) fabric
+
+        Just ( f, c ) ->
+            if f == fabric && c == color then
+                group
+                    [ drawing (Cartoon.Part.Cloth "salmon") Cartoon.Fabric.Solid
+                        |> scale 1.1
+                        |> moveRight 32
+                        |> moveDown 12
+                    , drawing (Cartoon.Part.Cloth color) fabric
+                    ]
+
+            else
+                drawing (Cartoon.Part.Cloth color) fabric
+
+
+stoffen geselecteerdeStof =
+    group
+        (List.indexedMap
+            (\i s ->
+                s |> moveDown (65 * toFloat i)
+            )
+            [ stof Cartoon.Fabric.Solid "lightGreen" geselecteerdeStof
+            , stof Cartoon.Fabric.Solid "lightBlue" geselecteerdeStof
+            , stof Cartoon.Fabric.Solid "pink" geselecteerdeStof
+            , stof Cartoon.Fabric.Flower "white" geselecteerdeStof
             ]
-    in
+        )
+        |> moveRight 435
+        |> moveUp 100
+
+
+kleding selectie =
     group
         (List.filterMap
-            (\( p, d ) ->
-                if List.member p selectie then
-                    Just d
+            (\( part, maybeCloth ) ->
+                let
+                    ( fabric, color ) =
+                        case maybeCloth of
+                            Nothing ->
+                                ( Cartoon.Fabric.Solid, "none" )
 
-                else
-                    Nothing
+                            Just c ->
+                                c
+                in
+                case part of
+                    Cartoon.Part.Skirt ->
+                        Just
+                            (drawing Cartoon.Part.Skirt fabric
+                                |> moveLeft 50
+                                |> moveUp 20
+                            )
+
+                    Cartoon.Part.Boots ->
+                        Just
+                            (drawing Cartoon.Part.Boots fabric
+                                |> moveRight 100
+                                |> moveUp 10
+                            )
+
+                    Cartoon.Part.Shirt ->
+                        Just
+                            (drawing Cartoon.Part.Shirt fabric
+                                |> moveRight 50
+                                |> moveUp 70
+                            )
+
+                    _ ->
+                        Nothing
             )
-            alles
+            selectie
         )
         |> scale 0.8
 
@@ -180,27 +236,30 @@ update msg model =
     case msg of
         PlaygroundMsg pmsg ->
             let
-                parts =
+                ( cloth, parts ) =
                     case pmsg of
-                        Playground.Clicked part ->
+                        Playground.Clicked fabric part ->
                             case part of
-                                Cartoon.Girl _ ->
-                                    Debug.log "closet" model.parts
+                                Cartoon.Part.Cloth color ->
+                                    ( Just ( fabric, color ), model.parts )
+
+                                Cartoon.Part.Girl _ ->
+                                    ( model.cloth, Debug.log "closet" model.parts )
 
                                 _ ->
-                                    if List.member part model.parts then
-                                        List.filter (\p -> p /= part) model.parts
+                                    if List.member part (List.map Tuple.first model.parts) then
+                                        ( model.cloth, List.filter (\( p, _ ) -> p /= part) model.parts )
 
                                     else
-                                        part :: model.parts
+                                        ( Nothing, ( part, model.cloth ) :: model.parts )
 
                         _ ->
-                            model.parts
+                            ( model.cloth, model.parts )
 
                 ( playground, cmd ) =
                     Playground.componentUpdate updatePlayground pmsg model.playground
             in
-            ( { model | playground = playground, parts = parts }, Cmd.map PlaygroundMsg cmd )
+            ( { model | playground = playground, parts = parts, cloth = cloth }, Cmd.map PlaygroundMsg cmd )
 
 
 updatePlayground computer memory =

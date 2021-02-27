@@ -134,7 +134,7 @@ type alias Computer =
     , keyboard : Keyboard
     , screen : Screen
     , time : Time
-    , clicked : Maybe Cartoon.Part
+    , clicked : Maybe ( Cartoon.Fabric, Cartoon.Part )
     }
 
 
@@ -563,7 +563,7 @@ type Msg
     | MouseMove Float Float
     | MouseClick
     | MouseButton Bool
-    | Clicked Cartoon.Part
+    | Clicked Cartoon.Fabric Cartoon.Part
 
 
 gameUpdate : (Computer -> memory -> memory) -> Msg -> Game memory -> Game memory
@@ -610,8 +610,8 @@ gameUpdate updateMemory msg (Game vis memory computer) =
                     , mouse = Mouse computer.mouse.x computer.mouse.y False False
                 }
 
-        Clicked part ->
-            Game vis memory { computer | clicked = Just part }
+        Clicked fabric part ->
+            Game vis memory { computer | clicked = Just ( fabric, part ) }
 
 
 
@@ -739,7 +739,7 @@ type Form
     | Image Number Number String
     | Words Color String
     | Group (List Shape)
-    | Drawing Cartoon.Part
+    | Drawing Cartoon.Part Cartoon.Fabric
 
 
 {-| Make circles:
@@ -973,9 +973,9 @@ group shapes =
     Shape 0 0 0 1 1 (Group shapes)
 
 
-drawing : Cartoon.Part -> Shape
-drawing d =
-    Shape 0 0 0 1 1 (Drawing d)
+drawing : Cartoon.Part -> Cartoon.Fabric -> Shape
+drawing d f =
+    Shape 0 0 0 1 1 (Drawing d f)
 
 
 
@@ -1434,7 +1434,7 @@ colorClamp number =
 -- RENDER
 
 
-render : (Cartoon.Part -> msg) -> Screen -> List Shape -> Html.Html msg
+render : (Cartoon.Fabric -> Cartoon.Part -> msg) -> Screen -> List Shape -> Html.Html msg
 render clickMsg screen shapes =
     let
         w =
@@ -1465,7 +1465,7 @@ render clickMsg screen shapes =
 --
 
 
-renderShape : (Cartoon.Part -> msg) -> Shape -> Svg msg
+renderShape : (Cartoon.Fabric -> Cartoon.Part -> msg) -> Shape -> Svg msg
 renderShape clickMsg (Shape x y angle s alpha form) =
     case form of
         Circle color radius ->
@@ -1493,9 +1493,9 @@ renderShape clickMsg (Shape x y angle s alpha form) =
             g (transform (renderTransform x y angle s) :: renderAlpha alpha)
                 (List.map (renderShape clickMsg) shapes)
 
-        Drawing part ->
+        Drawing part fabric ->
             g (transform (renderTransform x y angle s) :: renderAlpha alpha)
-                [ Cartoon.part clickMsg part Cartoon.colors.girl ]
+                [ Cartoon.part clickMsg part Cartoon.colors.system9tan fabric ]
 
 
 
