@@ -101,6 +101,13 @@ build =
     , rightArm =
         startFrom ( 26, 64 )
             |> lineToRel [ ( 8, 6 ), ( 6, 12 ), ( 4, 24 ), ( 10, 24 ), ( 10, 16 ), ( 10, 16 ), ( 8, 14 ), ( 6, 12 ), ( 10, 2 ), ( 6, 10 ), ( -2, 10 ), ( -10, -4 ), ( -12, -16 ), ( -26, -34 ), ( -6, -6 ), ( -20, -50 ) ]
+    , shirt =
+        startFrom ( -37, -75 )
+            |> lineTo [ ( 45, -70 ), ( 30, 10 ), ( 55, 60 ), ( -30, 85 ), ( -25, 15 ), ( -37, -75 ) ]
+    , skirt =
+        startFrom ( -23, 1 )
+            |> lineToRel [ ( 60, -4 ), ( 6, 24 ) ]
+            |> cubicRel [ ( 24, 80 ), ( 50, 170 ), ( 84, 222 ), ( -60, 12 ), ( -114, 10 ), ( -172, 6 ), ( 10, -68 ), ( 22, -150 ), ( 20, -228 ) ]
     }
 
 
@@ -131,29 +138,30 @@ part msg p coloring fabric =
                 [ Fabric.defs, girl msg parts coloring fabric ]
 
         Body ->
-            group "white"
-                "black"
-                []
-                [ group "brown"
-                    "#331122"
-                    [ transform "translate(5,-160)" ]
-                    [ Svg.path [ d build.body ] []
-                    , Svg.path [ transform "scale(0.7) translate(0,27)", d build.head ] []
-                    , Svg.path [ d build.leftArm ] []
-                    , Svg.path [ d build.rightArm ] []
-                    , Svg.path [ d build.breasts ] []
-                    ]
-                , Svg.rect [ x "0", y "0", width "10", height "10" ] []
+            group "brown"
+                "#331122"
+                [ transform "translate(5,-160)" ]
+                [ Svg.path [ d build.body ] []
+                , Svg.path [ transform "scale(0.7) translate(0,27)", d build.head ] []
+                , Svg.path [ d build.leftArm ] []
+                , Svg.path [ d build.rightArm ] []
+                , Svg.path [ d build.breasts ] []
                 ]
 
         Shirt ->
-            group "white" "black" [] []
+            group coloring.skirt.base
+                "none"
+                [ transform "translate(0,-30)" ]
+                [ Svg.path [ d build.shirt ] [] ]
 
         Sleeves ->
             group "white" "black" [] []
 
         Skirt ->
-            group "white" "black" [] []
+            group coloring.skirt.light
+                "none"
+                []
+                [ Svg.path [ d build.skirt ] [] ]
 
         Boots ->
             group "white" "black" [] []
