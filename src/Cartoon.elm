@@ -1,6 +1,7 @@
 module Cartoon exposing
     ( Fabric
     , Part
+    , addClothes
     , drawing
     )
 
@@ -35,3 +36,9 @@ type alias Doll =
     , hips : Location
     , feet : Location
     }
+
+
+addClothes clothes outfit =
+    clothes
+        :: List.reverse outfit
+        |> List.reverse

@@ -92,9 +92,9 @@ build =
             |> lineToRel [ ( 18, 18 ), ( 16, -16 ) ]
     , breasts =
         startFrom ( -24, 82 )
-            |> cubicRel [ ( -16, 22 ), ( 10, 40 ), ( 20, 18 ) ]
-            |> moveTo ( 2, 102 )
-            |> cubicRel [ ( 12, 20 ), ( 38, 6 ), ( 22, -16 ) ]
+            |> cubicRel [ ( -10, 22 ), ( 10, 30 ), ( 20, 25 ) ]
+            |> moveTo ( 2, 106 )
+            |> cubicRel [ ( 12, 8 ), ( 32, 6 ), ( 22, -22 ) ]
     , leftArm =
         startFrom ( -28, 60 )
             |> lineToRel

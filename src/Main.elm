@@ -13,7 +13,6 @@ type alias Model =
     { playground : Playground.Game {}
     , clothesInCloset : List ( Fabric, Part )
     , clothesBeingWorn : List ( Fabric, Part )
-    , selectedFabric : Maybe Fabric
     }
 
 
@@ -30,12 +29,11 @@ main =
         { init =
             \() ->
                 ( { playground = p
-                  , clothesInCloset = []
+                  , clothesInCloset = wardrobe
                   , clothesBeingWorn =
                         [ ( Flower, Cartoon.Part.Skirt )
-                        , ( Solid "#AAAAFF", Cartoon.Part.Shirt )
+                        , ( Solid "#7755CC", Cartoon.Part.Shirt )
                         ]
-                  , selectedFabric = Nothing
                   }
                 , Cmd.map PlaygroundMsg cmd
                 )
@@ -45,8 +43,12 @@ main =
         }
 
 
+wardrobe =
+    List.concatMap (\f -> List.map (Tuple.pair f) Cartoon.Part.list) Cartoon.Fabric.list
+
+
 pink =
-    rgb 255 230 230
+    rgb 255 235 235
 
 
 view : Model -> Browser.Document Msg
@@ -54,14 +56,21 @@ view model =
     { title = "Jana's Poppenspel"
     , body =
         [ background pink
-            [ Html.map PlaygroundMsg <| Playground.componentView model.playground (scene model.selectedFabric model.clothesInCloset model.clothesBeingWorn)
+            [ Html.h1
+                [ Attr.style "color" "salmon"
+                , Attr.style "position" "fixed"
+                , Attr.style "margin-left" "1em"
+                ]
+                [ Html.text "Jana's poppenspel" ]
+            , Playground.componentView model.playground (scene model.clothesInCloset model.clothesBeingWorn)
+                |> Html.map PlaygroundMsg
             ]
         ]
     }
 
 
-scene selectedFabric clothesInCloset clothesBeingWorn computer memory =
-    [ bed, kast (kleding clothesInCloset), stoffen selectedFabric, girl clothesBeingWorn, rectangle red 1 1 ]
+scene clothesInCloset clothesBeingWorn computer memory =
+    [ bed, kast (kleding clothesInCloset), girl clothesBeingWorn, rectangle red 1 1 ]
 
 
 clicked memory =
@@ -106,16 +115,22 @@ bed =
         |> scale 1.4
 
 
+darkerBrown =
+    rgb 70 35 30
+
+
 kast inhoud =
     group
-        [ rectangle brown 300 400
-        , group [ oval brown 300 100, oval pink 70 30 |> moveUp 50 ]
-            |> moveUp 200
-        , rectangle darkBrown 280 380
+        [ rectangle brown 400 500
+        , group [ oval brown 400 100, oval pink 70 30 |> moveUp 50 ]
+            |> moveUp 250
+        , rectangle darkBrown 380 480
+        , rectangle darkerBrown 320 420
+            |> moveUp 5
         , inhoud
         ]
         |> moveRight 300
-        |> moveUp 80
+        |> moveUp 120
 
 
 availableClothingVariants clothing =
@@ -168,35 +183,47 @@ stoffen geselecteerdeStof =
 
 
 kleding selectie =
+    let
+        ox =
+            8
+    in
     group
-        (List.filterMap
-            (\( fabric, part ) ->
+        (List.foldl
+            (\( fabric, part ) ( i, parts ) ->
                 case part of
                     Cartoon.Part.Skirt ->
-                        Just
-                            (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Skirt ))
-                                |> moveLeft 50
-                                |> moveUp 20
-                            )
+                        ( i + 1
+                        , (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Skirt ))
+                            |> moveLeft (50 + i * ox)
+                            |> moveUp 20
+                          )
+                            :: parts
+                        )
 
                     Cartoon.Part.Boots ->
-                        Just
-                            (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Boots ))
-                                |> moveRight 100
-                                |> moveUp 10
-                            )
+                        ( i + 1
+                        , (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Boots ))
+                            |> moveRight (100 + i * ox)
+                            |> moveUp 10
+                          )
+                            :: parts
+                        )
 
                     Cartoon.Part.Shirt ->
-                        Just
-                            (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Shirt ))
-                                |> moveRight 50
-                                |> moveUp 70
-                            )
+                        ( i + 1
+                        , (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Shirt ))
+                            |> moveRight (50 + i * ox)
+                            |> moveUp 70
+                          )
+                            :: parts
+                        )
 
                     _ ->
-                        Nothing
+                        ( i, parts )
             )
+            ( 0, [] )
             selectie
+            |> Tuple.second
         )
         |> scale 0.8
 
@@ -221,7 +248,8 @@ menu =
 
 background color =
     Html.div
-        [ Attr.style "width" "100vw"
+        [ Attr.style "font-family" "TheGirlNextDoor-Regular"
+        , Attr.style "width" "100vw"
         , Attr.style "height" "100vh"
         , Attr.style "background-color" (renderColor color)
         ]
@@ -232,43 +260,29 @@ update msg model =
     case msg of
         PlaygroundMsg pmsg ->
             let
-                ( selectedFabric, clothesInCloset, clothesBeingWorn ) =
+                ( clothesInCloset, clothesBeingWorn ) =
                     case pmsg of
                         Playground.Clicked (Cartoon.Part.Clicked clickedFabric clickedPart) ->
                             case clickedPart of
                                 Cartoon.Part.Patch ->
-                                    ( Just clickedFabric, model.clothesInCloset, model.clothesBeingWorn )
+                                    ( model.clothesInCloset, model.clothesBeingWorn )
 
                                 Cartoon.Part.Girl _ ->
-                                    ( model.selectedFabric, model.clothesInCloset, model.clothesBeingWorn )
+                                    ( model.clothesInCloset, model.clothesBeingWorn )
 
                                 _ ->
                                     if List.member ( clickedFabric, clickedPart ) model.clothesInCloset then
-                                        ( model.selectedFabric
-                                        , List.filter (\( _, p ) -> p /= clickedPart) model.clothesInCloset
-                                        , ( clickedFabric, clickedPart ) :: model.clothesBeingWorn
+                                        ( List.filter (\c -> c /= ( clickedFabric, clickedPart )) model.clothesInCloset
+                                        , Cartoon.addClothes ( clickedFabric, clickedPart ) model.clothesBeingWorn
                                         )
 
                                     else
-                                        case model.selectedFabric of
-                                            Nothing ->
-                                                if List.member clickedPart (List.map Tuple.second model.clothesInCloset) then
-                                                    ( Nothing, model.clothesInCloset, ( clickedFabric, clickedPart ) :: model.clothesBeingWorn )
-
-                                                else
-                                                    ( Nothing
-                                                    , ( clickedFabric, clickedPart ) :: model.clothesInCloset
-                                                    , List.filter (\( _, p ) -> p /= clickedPart) model.clothesBeingWorn
-                                                    )
-
-                                            Just c ->
-                                                ( Nothing
-                                                , ( c, clickedPart ) :: model.clothesInCloset
-                                                , List.filter (\( _, p ) -> p /= clickedPart) model.clothesBeingWorn
-                                                )
+                                        ( ( clickedFabric, clickedPart ) :: model.clothesInCloset
+                                        , List.filter (\( _, p ) -> p /= clickedPart) model.clothesBeingWorn
+                                        )
 
                         _ ->
-                            ( model.selectedFabric, model.clothesInCloset, model.clothesBeingWorn )
+                            ( model.clothesInCloset, model.clothesBeingWorn )
 
                 ( playground, cmd ) =
                     Playground.componentUpdate updatePlayground pmsg model.playground
@@ -277,7 +291,6 @@ update msg model =
                 | playground = playground
                 , clothesInCloset = clothesInCloset
                 , clothesBeingWorn = clothesBeingWorn
-                , selectedFabric = selectedFabric
               }
             , Cmd.map PlaygroundMsg cmd
             )
