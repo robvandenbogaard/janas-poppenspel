@@ -1437,20 +1437,21 @@ colorClamp number =
 render : (Cartoon.Fabric -> Cartoon.Part -> msg) -> Screen -> List Shape -> Html.Html msg
 render clickMsg screen shapes =
     let
-        w =
-            String.fromFloat screen.width
+        ( w, h ) =
+            if screen.height > screen.width then
+                ( 1000, 1000 * screen.height / screen.width )
 
-        h =
-            String.fromFloat screen.height
+            else
+                ( 1000 * screen.width / screen.height, 1000 )
 
         x =
-            String.fromFloat screen.left
+            -500
 
         y =
-            String.fromFloat screen.bottom
+            -500
     in
     svg
-        [ viewBox (x ++ " " ++ y ++ " " ++ w ++ " " ++ h)
+        [ viewBox (String.fromFloat x ++ " " ++ String.fromFloat y ++ " " ++ String.fromFloat w ++ " " ++ String.fromFloat h)
         , H.style "position" "fixed"
         , H.style "top" "0"
         , H.style "left" "0"

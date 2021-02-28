@@ -59,7 +59,7 @@ scene geselecteerdeStof ongedragen computer memory =
                 (\part -> not <| List.member ( part, Nothing ) ongedragen)
                 Cartoon.Part.list
     in
-    [ bed, kast (kleding ongedragen), stoffen geselecteerdeStof, girl metKleren, rectangle red 10 10 ]
+    [ bed, kast (kleding ongedragen), stoffen geselecteerdeStof, girl metKleren, rectangle red 1 1 ]
 
 
 clicked memory =
@@ -137,8 +137,6 @@ stof fabric color currentCloth =
                 group
                     [ drawing (Cartoon.Part.Cloth "salmon") Cartoon.Fabric.Solid
                         |> scale 1.1
-                        |> moveRight 32
-                        |> moveDown 12
                     , drawing (Cartoon.Part.Cloth color) fabric
                     ]
 
@@ -150,16 +148,18 @@ stoffen geselecteerdeStof =
     group
         (List.indexedMap
             (\i s ->
-                s |> moveDown (65 * toFloat i)
+                s |> moveDown (60 * toFloat i)
             )
             [ stof Cartoon.Fabric.Solid "lightGreen" geselecteerdeStof
             , stof Cartoon.Fabric.Solid "lightBlue" geselecteerdeStof
             , stof Cartoon.Fabric.Solid "pink" geselecteerdeStof
             , stof Cartoon.Fabric.Flower "white" geselecteerdeStof
+            , stof Cartoon.Fabric.Shawl "red" geselecteerdeStof
+            , stof Cartoon.Fabric.Shawl2 "yellow" geselecteerdeStof
             ]
         )
-        |> moveRight 435
-        |> moveUp 100
+        |> moveRight 115
+        |> moveUp 200
 
 
 kleding selectie =

@@ -5,6 +5,7 @@ module Cartoon exposing
     , part
     )
 
+import Cartoon.Doll as Doll
 import Cartoon.Fabric
 import Cartoon.Part
 import Cartoon.System9Tan as System9Tan
@@ -18,7 +19,8 @@ colors =
 
 
 part =
-    System9Tan.part
+    --System9Tan.part
+    Doll.part
 
 
 type alias Fabric =
