@@ -2,26 +2,23 @@ module Main exposing (main)
 
 import Browser
 import Cartoon
-import Cartoon.Fabric
-import Cartoon.Part
+import Cartoon.Fabric exposing (Fabric(..))
+import Cartoon.Part exposing (Part)
 import Html exposing (Html)
 import Html.Attributes as Attr
 import Playground exposing (..)
 
 
-type alias Cloth =
-    Maybe ( Cartoon.Fabric, String )
-
-
 type alias Model =
     { playground : Playground.Game {}
-    , parts : List ( Cartoon.Part, Cloth )
-    , cloth : Cloth
+    , clothesInCloset : List ( Fabric, Part )
+    , clothesBeingWorn : List ( Fabric, Part )
+    , selectedFabric : Maybe Fabric
     }
 
 
 type Msg
-    = PlaygroundMsg Playground.Msg
+    = PlaygroundMsg (Playground.Msg Cartoon.Part.Msg)
 
 
 main =
@@ -30,7 +27,18 @@ main =
             Playground.componentInit {}
     in
     Browser.document
-        { init = \() -> ( { playground = p, parts = [], cloth = Nothing }, Cmd.map PlaygroundMsg cmd )
+        { init =
+            \() ->
+                ( { playground = p
+                  , clothesInCloset = []
+                  , clothesBeingWorn =
+                        [ ( Flower, Cartoon.Part.Skirt )
+                        , ( Solid "#AAAAFF", Cartoon.Part.Shirt )
+                        ]
+                  , selectedFabric = Nothing
+                  }
+                , Cmd.map PlaygroundMsg cmd
+                )
         , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
@@ -46,20 +54,14 @@ view model =
     { title = "Jana's Poppenspel"
     , body =
         [ background pink
-            [ Html.map PlaygroundMsg <| Playground.componentView model.playground (scene model.cloth model.parts)
+            [ Html.map PlaygroundMsg <| Playground.componentView model.playground (scene model.selectedFabric model.clothesInCloset model.clothesBeingWorn)
             ]
         ]
     }
 
 
-scene geselecteerdeStof ongedragen computer memory =
-    let
-        metKleren =
-            List.filter
-                (\part -> not <| List.member ( part, Nothing ) ongedragen)
-                Cartoon.Part.list
-    in
-    [ bed, kast (kleding ongedragen), stoffen geselecteerdeStof, girl metKleren, rectangle red 1 1 ]
+scene selectedFabric clothesInCloset clothesBeingWorn computer memory =
+    [ bed, kast (kleding clothesInCloset), stoffen selectedFabric, girl clothesBeingWorn, rectangle red 1 1 ]
 
 
 clicked memory =
@@ -116,47 +118,50 @@ kast inhoud =
         |> moveUp 80
 
 
+availableClothingVariants clothing =
+    Cartoon.Fabric.list
+        |> List.map (Tuple.pair clothing)
 
---winkel =
---    een plek waar je spulen kan koopen
+
+availableCothes =
+    Cartoon.Part.list
+        |> List.map availableClothingVariants
+        |> List.concat
 
 
 girl kledingSelectie =
-    drawing (Cartoon.Part.Girl kledingSelectie) Cartoon.Fabric.Solid
-        |> moveLeft 300
+    Cartoon.drawing ( Solid "brown", Cartoon.Part.Girl kledingSelectie )
+        |> drawing
+        |> moveLeft 270
         |> scale 1.2
 
 
-stof fabric color currentCloth =
-    case currentCloth of
+stof currentFabric fabric =
+    case currentFabric of
         Nothing ->
-            drawing (Cartoon.Part.Cloth color) fabric
+            drawing (Cartoon.drawing ( fabric, Cartoon.Part.Patch ))
 
-        Just ( f, c ) ->
-            if f == fabric && c == color then
+        Just f ->
+            if f == fabric then
                 group
-                    [ drawing (Cartoon.Part.Cloth "salmon") Cartoon.Fabric.Solid
+                    [ drawing (Cartoon.drawing ( Cartoon.Fabric.Solid "salmon", Cartoon.Part.Patch ))
                         |> scale 1.1
-                    , drawing (Cartoon.Part.Cloth color) fabric
+                    , drawing
+                        (Cartoon.drawing ( fabric, Cartoon.Part.Patch ))
                     ]
 
             else
-                drawing (Cartoon.Part.Cloth color) fabric
+                drawing (Cartoon.drawing ( fabric, Cartoon.Part.Patch ))
 
 
 stoffen geselecteerdeStof =
     group
-        (List.indexedMap
-            (\i s ->
-                s |> moveDown (60 * toFloat i)
-            )
-            [ stof Cartoon.Fabric.Solid "lightGreen" geselecteerdeStof
-            , stof Cartoon.Fabric.Solid "lightBlue" geselecteerdeStof
-            , stof Cartoon.Fabric.Solid "pink" geselecteerdeStof
-            , stof Cartoon.Fabric.Flower "white" geselecteerdeStof
-            , stof Cartoon.Fabric.Shawl "red" geselecteerdeStof
-            , stof Cartoon.Fabric.Shawl2 "yellow" geselecteerdeStof
-            ]
+        (Cartoon.Fabric.list
+            |> List.map (stof geselecteerdeStof)
+            |> List.indexedMap
+                (\i s ->
+                    s |> moveDown (60 * toFloat i)
+                )
         )
         |> moveRight 115
         |> moveUp 200
@@ -165,34 +170,25 @@ stoffen geselecteerdeStof =
 kleding selectie =
     group
         (List.filterMap
-            (\( part, maybeCloth ) ->
-                let
-                    ( fabric, color ) =
-                        case maybeCloth of
-                            Nothing ->
-                                ( Cartoon.Fabric.Solid, "none" )
-
-                            Just c ->
-                                c
-                in
+            (\( fabric, part ) ->
                 case part of
                     Cartoon.Part.Skirt ->
                         Just
-                            (drawing Cartoon.Part.Skirt fabric
+                            (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Skirt ))
                                 |> moveLeft 50
                                 |> moveUp 20
                             )
 
                     Cartoon.Part.Boots ->
                         Just
-                            (drawing Cartoon.Part.Boots fabric
+                            (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Boots ))
                                 |> moveRight 100
                                 |> moveUp 10
                             )
 
                     Cartoon.Part.Shirt ->
                         Just
-                            (drawing Cartoon.Part.Shirt fabric
+                            (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Shirt ))
                                 |> moveRight 50
                                 |> moveUp 70
                             )
@@ -236,30 +232,55 @@ update msg model =
     case msg of
         PlaygroundMsg pmsg ->
             let
-                ( cloth, parts ) =
+                ( selectedFabric, clothesInCloset, clothesBeingWorn ) =
                     case pmsg of
-                        Playground.Clicked fabric part ->
-                            case part of
-                                Cartoon.Part.Cloth color ->
-                                    ( Just ( fabric, color ), model.parts )
+                        Playground.Clicked (Cartoon.Part.Clicked clickedFabric clickedPart) ->
+                            case clickedPart of
+                                Cartoon.Part.Patch ->
+                                    ( Just clickedFabric, model.clothesInCloset, model.clothesBeingWorn )
 
                                 Cartoon.Part.Girl _ ->
-                                    ( model.cloth, Debug.log "closet" model.parts )
+                                    ( model.selectedFabric, model.clothesInCloset, model.clothesBeingWorn )
 
                                 _ ->
-                                    if List.member part (List.map Tuple.first model.parts) then
-                                        ( model.cloth, List.filter (\( p, _ ) -> p /= part) model.parts )
+                                    if List.member ( clickedFabric, clickedPart ) model.clothesInCloset then
+                                        ( model.selectedFabric
+                                        , List.filter (\( _, p ) -> p /= clickedPart) model.clothesInCloset
+                                        , ( clickedFabric, clickedPart ) :: model.clothesBeingWorn
+                                        )
 
                                     else
-                                        ( Nothing, ( part, model.cloth ) :: model.parts )
+                                        case model.selectedFabric of
+                                            Nothing ->
+                                                if List.member clickedPart (List.map Tuple.second model.clothesInCloset) then
+                                                    ( Nothing, model.clothesInCloset, ( clickedFabric, clickedPart ) :: model.clothesBeingWorn )
+
+                                                else
+                                                    ( Nothing
+                                                    , ( clickedFabric, clickedPart ) :: model.clothesInCloset
+                                                    , List.filter (\( _, p ) -> p /= clickedPart) model.clothesBeingWorn
+                                                    )
+
+                                            Just c ->
+                                                ( Nothing
+                                                , ( c, clickedPart ) :: model.clothesInCloset
+                                                , List.filter (\( _, p ) -> p /= clickedPart) model.clothesBeingWorn
+                                                )
 
                         _ ->
-                            ( model.cloth, model.parts )
+                            ( model.selectedFabric, model.clothesInCloset, model.clothesBeingWorn )
 
                 ( playground, cmd ) =
                     Playground.componentUpdate updatePlayground pmsg model.playground
             in
-            ( { model | playground = playground, parts = parts, cloth = cloth }, Cmd.map PlaygroundMsg cmd )
+            ( { model
+                | playground = playground
+                , clothesInCloset = clothesInCloset
+                , clothesBeingWorn = clothesBeingWorn
+                , selectedFabric = selectedFabric
+              }
+            , Cmd.map PlaygroundMsg cmd
+            )
 
 
 updatePlayground computer memory =

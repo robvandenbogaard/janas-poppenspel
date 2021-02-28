@@ -1,8 +1,7 @@
 module Cartoon exposing
     ( Fabric
     , Part
-    , colors
-    , part
+    , drawing
     )
 
 import Cartoon.Doll as Doll
@@ -14,13 +13,9 @@ import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
 
 
-colors =
-    Cartoon.Fabric.colors
-
-
-part =
-    --System9Tan.part
-    Doll.part
+drawing =
+    --System9Tan.drawing
+    Doll.drawing
 
 
 type alias Fabric =
@@ -29,3 +24,14 @@ type alias Fabric =
 
 type alias Part =
     Cartoon.Part.Part
+
+
+type alias Location =
+    ( Float, Float )
+
+
+type alias Doll =
+    { shoulders : Location
+    , hips : Location
+    , feet : Location
+    }

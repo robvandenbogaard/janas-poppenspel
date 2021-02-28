@@ -6,6 +6,7 @@ module Cartoon.System9Tan exposing
 
 import Cartoon.Fabric as Fabric exposing (Fabric(..))
 import Cartoon.Part as Part exposing (Part(..))
+import Playground
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
@@ -18,16 +19,36 @@ attribution =
     }
 
 
-part : (Fabric -> Part -> msg) -> Part -> Fabric.Coloring -> Fabric -> Svg msg
-part msg p coloring fabric =
+coloring =
+    { skin = { light = "#FFE6D5" }
+    , skirt = { base = "#3771C8", lower = "#1091FF", low = "#80B3FF", mid = "#8FBAFF", light = "#D5E5FF", shade = "#5A6F90" }
+    , boots = "#F4EED7"
+    , hairclip = { base = "#AAEEFF", shade = "#0D7AD6" }
+    }
+
+
+coloringGreen =
+    { skin = { light = "#FFE6D5" }
+    , skirt = { base = "#71C837", lower = "#91FF10", low = "#B3FF80", mid = "#BAFF8F", light = "#E5FFD5", shade = "#6F905A" }
+    , boots = "#F4EED7"
+    , hairclip = { base = "#EEFFAA", shade = "#7AD60D" }
+    }
+
+
+part : ( Fabric, Part ) -> Svg (Playground.Msg Part.Msg)
+part ( fabric, p ) =
+    let
+        msg =
+            Playground.Clicked
+    in
     Svg.g
         [ transform "scale(0.2) translate(-1750,-750)"
-        , onClick <| msg fabric p
+        , onClick <| msg (Part.Clicked fabric p)
         , Fabric.fill fabric coloring.skirt.base
         ]
         (case p of
             Girl parts ->
-                [ Fabric.defs, girl msg parts coloring fabric ]
+                [ Fabric.defs, girl fabric parts ]
 
             Skirt ->
                 [ Fabric.defs
@@ -40,7 +61,7 @@ part msg p coloring fabric =
                     []
                 , Svg.path
                     [ id "path3802"
-                    , Fabric.fill fabric coloring.skin.light
+                    , Fabric.fill fabric coloring.skirt.light
                     , d "M1688.575,885.618c20-46.43,42.143-120,42.143-120l25,107.144L1688.575,885.618z"
                     ]
                     []
@@ -292,28 +313,28 @@ part msg p coloring fabric =
                 , Svg.path
                     [ id "path2940"
                     , opacity "0.9"
-                    , Fabric.fill fabric "#FFFFFF"
+                    , Fabric.fill fabric "white"
                     , d "M1641.432,17.046\n\t\t\tc81.429,107.143,162.857,12.857,162.857,12.857l-10-4.285l10-20C1754.251,39.165,1699.065,36.673,1641.432,17.046z"
                     ]
                     []
                 , Svg.path
                     [ id "path2942"
                     , opacity "0.9"
-                    , Fabric.fill fabric "#FFFFFF"
+                    , Fabric.fill fabric "white"
                     , d "M1638.575,41.331\n\t\t\tc50.476,81.352,100.952,97.662,151.429,34.287C1739.527,107.806,1689.051,89.001,1638.575,41.331z"
                     ]
                     []
                 , Svg.path
                     [ id "path2944"
                     , opacity "0.9"
-                    , Fabric.fill fabric "#FFFFFF"
+                    , Fabric.fill fabric "white"
                     , d "M1754.288,77.046\n\t\t\tc22.337-5.691,41.174-22.643,52.143-37.857l-9.285,20.715C1776.277,74.833,1766.031,74.892,1754.288,77.046L1754.288,77.046z"
                     ]
                     []
                 ]
 
-            Cloth color ->
-                [ Svg.rect [ Fabric.fill fabric color, x "0", y "0", width "300", height "300" ] []
+            Patch ->
+                [ Svg.rect [ Fabric.fill fabric "none", x "0", y "0", width "300", height "300" ] []
                 ]
 
             _ ->
@@ -321,7 +342,11 @@ part msg p coloring fabric =
         )
 
 
-girl msg parts coloring fabric =
+girl fabric parts =
+    let
+        msg f p =
+            Playground.Clicked (Part.Clicked f p)
+    in
     Svg.g [ id "layer1", Svg.Attributes.title <| String.join "" [ "Drawing by ", attribution.author, ": ", attribution.url ] ]
         [ Fabric.defs
         , Svg.path

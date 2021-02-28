@@ -1,15 +1,17 @@
 module Cartoon.Part exposing
-    ( Part(..)
+    ( Msg(..)
+    , Part(..)
     , list
     , show
     )
 
+import Cartoon.Fabric exposing (Fabric)
 import Svg.Attributes
 
 
 type Part
-    = Cloth String
-    | Girl (List Part)
+    = Patch
+    | Girl (List ( Fabric, Part ))
     | Body
     | Skirt
     | Shirt
@@ -18,12 +20,16 @@ type Part
     | Boots
 
 
+type Msg
+    = Clicked Fabric Part
+
+
 list =
     [ Skirt, Shirt, Sleeves, HairClip, Boots ]
 
 
 show p parts =
-    if List.member p parts then
+    if List.member p (List.map Tuple.second parts) then
         Svg.Attributes.style ""
 
     else

@@ -102,7 +102,6 @@ module Playground exposing
 import Browser
 import Browser.Dom as Dom
 import Browser.Events as E
-import Cartoon
 import Html
 import Html.Attributes as H
 import Json.Decode as D
@@ -134,7 +133,6 @@ type alias Computer =
     , keyboard : Keyboard
     , screen : Screen
     , time : Time
-    , clicked : Maybe ( Cartoon.Fabric, Cartoon.Part )
     }
 
 
@@ -488,26 +486,26 @@ toFrac period (Time posix) =
     toFloat (modBy (round p) ms) / p
 
 
-componentInit : memory -> ( Game memory, Cmd Msg )
+componentInit : memory -> ( Game memory, Cmd (Msg msg) )
 componentInit initialMemory =
     ( Game E.Visible initialMemory initialComputer
     , Task.perform GotViewport Dom.getViewport
     )
 
 
-componentView : Game memory -> (Computer -> memory -> List Shape) -> Html.Html Msg
+componentView : Game memory -> (Computer -> memory -> List (Shape (Msg msg))) -> Html.Html (Msg msg)
 componentView (Game _ memory computer) viewMemory =
-    render Clicked computer.screen (viewMemory computer memory)
+    render computer.screen (viewMemory computer memory)
 
 
-componentUpdate : (Computer -> memory -> memory) -> Msg -> Game memory -> ( Game memory, Cmd Msg )
+componentUpdate : (Computer -> memory -> memory) -> Msg msg -> Game memory -> ( Game memory, Cmd (Msg msg) )
 componentUpdate updateMemory msg model =
     ( gameUpdate updateMemory msg model
     , Cmd.none
     )
 
 
-componentSubscriptions : Game memory -> Sub Msg
+componentSubscriptions : Game memory -> Sub (Msg msg)
 componentSubscriptions (Game visibility _ _) =
     case visibility of
         E.Hidden ->
@@ -523,7 +521,6 @@ initialComputer =
     , keyboard = emptyKeyboard
     , screen = toScreen 600 600
     , time = Time (Time.millisToPosix 0)
-    , clicked = Nothing
     }
 
 
@@ -531,7 +528,7 @@ initialComputer =
 -- SUBSCRIPTIONS
 
 
-gameSubscriptions : Sub Msg
+gameSubscriptions : Sub (Msg msg)
 gameSubscriptions =
     Sub.batch
         [ E.onResize Resized
@@ -554,7 +551,7 @@ type Game memory
     = Game E.Visibility memory Computer
 
 
-type Msg
+type Msg clickPayload
     = KeyChanged Bool String
     | Tick Time.Posix
     | GotViewport Dom.Viewport
@@ -563,10 +560,10 @@ type Msg
     | MouseMove Float Float
     | MouseClick
     | MouseButton Bool
-    | Clicked Cartoon.Fabric Cartoon.Part
+    | Clicked clickPayload
 
 
-gameUpdate : (Computer -> memory -> memory) -> Msg -> Game memory -> Game memory
+gameUpdate : (Computer -> memory -> memory) -> Msg msg -> Game memory -> Game memory
 gameUpdate updateMemory msg (Game vis memory computer) =
     case msg of
         Tick time ->
@@ -610,8 +607,8 @@ gameUpdate updateMemory msg (Game vis memory computer) =
                     , mouse = Mouse computer.mouse.x computer.mouse.y False False
                 }
 
-        Clicked fabric part ->
-            Game vis memory { computer | clicked = Just ( fabric, part ) }
+        Clicked m ->
+            Game vis memory computer
 
 
 
@@ -715,7 +712,7 @@ Read on to see examples of [`circle`](#circle), [`rectangle`](#rectangle),
 [`words`](#words), [`image`](#image), and many more!
 
 -}
-type Shape
+type Shape msg
     = Shape
         Number
         -- x
@@ -727,10 +724,10 @@ type Shape
         -- scale
         Number
         -- alpha
-        Form
+        (Form msg)
 
 
-type Form
+type Form msg
     = Circle Color Number
     | Oval Color Number Number
     | Rectangle Color Number Number
@@ -738,8 +735,8 @@ type Form
     | Polygon Color (List ( Number, Number ))
     | Image Number Number String
     | Words Color String
-    | Group (List Shape)
-    | Drawing Cartoon.Part Cartoon.Fabric
+    | Group (List (Shape msg))
+    | Drawing (Svg msg)
 
 
 {-| Make circles:
@@ -754,7 +751,7 @@ You give a color and then the radius. So the higher the number, the larger
 the circle.
 
 -}
-circle : Color -> Number -> Shape
+circle : Color -> Number -> Shape msg
 circle color radius =
     Shape 0 0 0 1 1 (Circle color radius)
 
@@ -768,7 +765,7 @@ You give the color, and then the width and height. So our `football` example
 is 200 pixels wide and 100 pixels tall.
 
 -}
-oval : Color -> Number -> Number -> Shape
+oval : Color -> Number -> Number -> Shape msg
 oval color width height =
     Shape 0 0 0 1 1 (Oval color width height)
 
@@ -787,7 +784,7 @@ The number you give is the dimension of each side. So that purple square would
 be 80 pixels by 80 pixels.
 
 -}
-square : Color -> Number -> Shape
+square : Color -> Number -> Shape msg
 square color n =
     Shape 0 0 0 1 1 (Rectangle color n n)
 
@@ -806,7 +803,7 @@ You give the color, width, and then height. So the first shape is vertical
 part of the cross, the thinner and taller part.
 
 -}
-rectangle : Color -> Number -> Number -> Shape
+rectangle : Color -> Number -> Number -> Shape msg
 rectangle color width height =
     Shape 0 0 0 1 1 (Rectangle color width height)
 
@@ -825,7 +822,7 @@ The number is the "radius", so the distance from the center to each point of
 the pyramid is `200`. Pretty big!
 
 -}
-triangle : Color -> Number -> Shape
+triangle : Color -> Number -> Shape msg
 triangle color radius =
     Shape 0 0 0 1 1 (Ngon color 3 radius)
 
@@ -843,7 +840,7 @@ You give the color and then the radius. So the distance from the center to each
 of the five points is 100 pixels.
 
 -}
-pentagon : Color -> Number -> Shape
+pentagon : Color -> Number -> Shape msg
 pentagon color radius =
     Shape 0 0 0 1 1 (Ngon color 5 radius)
 
@@ -863,7 +860,7 @@ If you made more hexagons, you could [`move`](#move) them around to make a
 honeycomb pattern!
 
 -}
-hexagon : Color -> Number -> Shape
+hexagon : Color -> Number -> Shape msg
 hexagon color radius =
     Shape 0 0 0 1 1 (Ngon color 6 radius)
 
@@ -881,7 +878,7 @@ You give the color and radius, so each point of this stop sign is 100 pixels
 from the center.
 
 -}
-octagon : Color -> Number -> Shape
+octagon : Color -> Number -> Shape msg
 octagon color radius =
     Shape 0 0 0 1 1 (Ngon color 8 radius)
 
@@ -900,7 +897,7 @@ octagon color radius =
 [`move`](#move) or [`group`](#group) so that rotation makes more sense.
 
 -}
-polygon : Color -> List ( Number, Number ) -> Shape
+polygon : Color -> List ( Number, Number ) -> Shape msg
 polygon color points =
     Shape 0 0 0 1 1 (Polygon color points)
 
@@ -917,7 +914,7 @@ polygon color points =
 You provide the width, height, and then the URL of the image you want to show.
 
 -}
-image : Number -> Number -> String -> Shape
+image : Number -> Number -> String -> Shape msg
 image w h src =
     Shape 0 0 0 1 1 (Image w h src)
 
@@ -934,7 +931,7 @@ image w h src =
 You can use [`scale`](#scale) to make the words bigger or smaller.
 
 -}
-words : Color -> String -> Shape
+words : Color -> String -> Shape msg
 words color string =
     Shape 0 0 0 1 1 (Words color string)
 
@@ -968,14 +965,14 @@ them as a group. Maybe you want to put a bunch of stars in the sky:
             ]
 
 -}
-group : List Shape -> Shape
+group : List (Shape msg) -> Shape msg
 group shapes =
     Shape 0 0 0 1 1 (Group shapes)
 
 
-drawing : Cartoon.Part -> Cartoon.Fabric -> Shape
-drawing d f =
-    Shape 0 0 0 1 1 (Drawing d f)
+drawing : Svg msg -> Shape msg
+drawing d =
+    Shape 0 0 0 1 1 (Drawing d)
 
 
 
@@ -999,7 +996,7 @@ drawing d f =
             ]
 
 -}
-move : Number -> Number -> Shape -> Shape
+move : Number -> Number -> Shape msg -> Shape msg
 move dx dy (Shape x y a s o f) =
     Shape (x + dx) (y + dy) a s o f
 
@@ -1017,7 +1014,7 @@ you could move the leaves up above the trunk:
             ]
 
 -}
-moveUp : Number -> Shape -> Shape
+moveUp : Number -> Shape msg -> Shape msg
 moveUp =
     moveY
 
@@ -1036,7 +1033,7 @@ above the ground, you could move the sky up and the ground down:
             ]
 
 -}
-moveDown : Number -> Shape -> Shape
+moveDown : Number -> Shape msg -> Shape msg
 moveDown dy (Shape x y a s o f) =
     Shape x (y - dy) a s o f
 
@@ -1053,7 +1050,7 @@ moveDown dy (Shape x y a s o f) =
             ]
 
 -}
-moveLeft : Number -> Shape -> Shape
+moveLeft : Number -> Shape msg -> Shape msg
 moveLeft dx (Shape x y a s o f) =
     Shape (x - dx) y a s o f
 
@@ -1070,7 +1067,7 @@ moveLeft dx (Shape x y a s o f) =
             ]
 
 -}
-moveRight : Number -> Shape -> Shape
+moveRight : Number -> Shape msg -> Shape msg
 moveRight =
     moveX
 
@@ -1091,7 +1088,7 @@ moves back and forth:
 Using `moveX` feels a bit nicer here because the movement may be positive or negative.
 
 -}
-moveX : Number -> Shape -> Shape
+moveX : Number -> Shape msg -> Shape msg
 moveX dx (Shape x y a s o f) =
     Shape (x + dx) y a s o f
 
@@ -1116,7 +1113,7 @@ Using `moveY` feels a bit nicer when setting things relative to the bottom or
 top of the screen, since the values are negative sometimes.
 
 -}
-moveY : Number -> Shape -> Shape
+moveY : Number -> Shape msg -> Shape msg
 moveY dy (Shape x y a s o f) =
     Shape x (y + dy) a s o f
 
@@ -1133,7 +1130,7 @@ be larger, you could say:
             ]
 
 -}
-scale : Number -> Shape -> Shape
+scale : Number -> Shape msg -> Shape msg
 scale ns (Shape x y a s o f) =
     Shape x y a (s * ns) o f
 
@@ -1152,7 +1149,7 @@ The degrees go **counter-clockwise** to match the direction of the
 [unit circle](https://en.wikipedia.org/wiki/Unit_circle).
 
 -}
-rotate : Number -> Shape -> Shape
+rotate : Number -> Shape msg -> Shape msg
 rotate da (Shape x y a s o f) =
     Shape x y (a + da) s o f
 
@@ -1175,7 +1172,7 @@ The number has to be between `0` and `1`, where `0` is totally transparent
 and `1` is completely solid.
 
 -}
-fade : Number -> Shape -> Shape
+fade : Number -> Shape msg -> Shape msg
 fade o (Shape x y a s _ f) =
     Shape x y a s o f
 
@@ -1434,8 +1431,8 @@ colorClamp number =
 -- RENDER
 
 
-render : (Cartoon.Fabric -> Cartoon.Part -> msg) -> Screen -> List Shape -> Html.Html msg
-render clickMsg screen shapes =
+render : Screen -> List (Shape msg) -> Html.Html msg
+render screen shapes =
     let
         ( w, h ) =
             if screen.height > screen.width then
@@ -1458,7 +1455,7 @@ render clickMsg screen shapes =
         , width "100%"
         , height "100%"
         ]
-        (List.map (renderShape clickMsg) shapes)
+        (List.map renderShape shapes)
 
 
 
@@ -1466,8 +1463,8 @@ render clickMsg screen shapes =
 --
 
 
-renderShape : (Cartoon.Fabric -> Cartoon.Part -> msg) -> Shape -> Svg msg
-renderShape clickMsg (Shape x y angle s alpha form) =
+renderShape : Shape msg -> Svg msg
+renderShape (Shape x y angle s alpha form) =
     case form of
         Circle color radius ->
             renderCircle color radius x y angle s alpha
@@ -1492,11 +1489,11 @@ renderShape clickMsg (Shape x y angle s alpha form) =
 
         Group shapes ->
             g (transform (renderTransform x y angle s) :: renderAlpha alpha)
-                (List.map (renderShape clickMsg) shapes)
+                (List.map renderShape shapes)
 
-        Drawing part fabric ->
+        Drawing d ->
             g (transform (renderTransform x y angle s) :: renderAlpha alpha)
-                [ Cartoon.part clickMsg part Cartoon.colors.system9tan fabric ]
+                [ d ]
 
 
 

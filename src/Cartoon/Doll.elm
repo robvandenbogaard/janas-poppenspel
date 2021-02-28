@@ -1,11 +1,12 @@
 module Cartoon.Doll exposing
     ( attribution
+    , drawing
     , girl
-    , part
     )
 
 import Cartoon.Fabric as Fabric exposing (Fabric(..))
 import Cartoon.Part as Part exposing (Part(..))
+import Playground
 import Svg exposing (Svg)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
@@ -111,34 +112,34 @@ build =
     }
 
 
-part : (Fabric -> Part -> msg) -> Part -> Fabric.Coloring -> Fabric -> Svg msg
-part msg p coloring fabric =
+drawing : ( Fabric, Part ) -> Svg (Playground.Msg Part.Msg)
+drawing ( fabric, p ) =
     let
-        group fillColor strokeColor attributes =
+        group strokeColor attributes =
             Svg.g
-                ([ onClick <| msg fabric p
-                 , Fabric.fill fabric fillColor
+                ([ onClick <| Playground.Clicked (Part.Clicked fabric p)
+                 , Fabric.fill fabric "none"
                  , stroke strokeColor
                  ]
                     ++ attributes
                 )
     in
     case p of
-        Cloth color ->
-            group color
+        Patch ->
+            group
                 "none"
                 []
-                [ Svg.rect [ Fabric.fill fabric color, x "-25", y "-25", width "50", height "50" ] []
+                [ Svg.rect [ Fabric.fill fabric "none", x "-25", y "-25", width "50", height "50" ] []
                 ]
 
         Girl parts ->
-            group coloring.skirt.base
+            group
                 "none"
                 []
-                [ Fabric.defs, girl msg parts coloring fabric ]
+                [ Fabric.defs, girl fabric parts ]
 
         Body ->
-            group "brown"
+            group
                 "#331122"
                 [ transform "translate(5,-160)" ]
                 [ Svg.path [ d build.body ] []
@@ -149,31 +150,27 @@ part msg p coloring fabric =
                 ]
 
         Shirt ->
-            group coloring.skirt.base
+            group
                 "none"
                 [ transform "translate(0,-30)" ]
                 [ Svg.path [ d build.shirt ] [] ]
 
         Sleeves ->
-            group "white" "black" [] []
+            group "black" [] []
 
         Skirt ->
-            group coloring.skirt.light
-                "none"
+            group "none"
                 []
                 [ Svg.path [ d build.skirt ] [] ]
 
         Boots ->
-            group "white" "black" [] []
+            group "black" [] []
 
         HairClip ->
-            group "white" "black" [] []
+            group "black" [] []
 
 
-girl : (Fabric -> Part -> msg) -> List Part -> Fabric.Coloring -> Fabric -> Svg msg
-girl msg parts coloring fabric =
-    Svg.g [ Svg.Attributes.title <| String.join "" [ "Drawing by ", attribution.author, ": ", attribution.url ] ]
-        (List.map
-            (\p -> part msg p coloring fabric)
-            (Body :: parts)
-        )
+girl : Fabric -> List ( Fabric, Part ) -> Svg (Playground.Msg Part.Msg)
+girl fabric parts =
+    List.map drawing (( fabric, Body ) :: parts)
+        |> Svg.g [ Svg.Attributes.title <| String.join "" [ "Drawing by ", attribution.author, ": ", attribution.url ] ]

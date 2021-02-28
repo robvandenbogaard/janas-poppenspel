@@ -1,10 +1,8 @@
 module Cartoon.Fabric exposing
-    ( Coloring
-    , Colors
-    , Fabric(..)
-    , colors
+    ( Fabric(..)
     , defs
     , fill
+    , list
     , shadow
     )
 
@@ -12,39 +10,9 @@ import Svg
 import Svg.Attributes exposing (..)
 
 
-type alias Coloring =
-    { skin : { light : String }
-    , skirt : { base : String, lower : String, low : String, mid : String, light : String, shade : String }
-    , boots : String
-    , hairclip : { base : String, shade : String }
-    }
-
-
-type alias Colors =
-    { system9tan : Coloring
-    , system9tanGreen : Coloring
-    }
-
-
-colors : Colors
-colors =
-    { system9tan =
-        { skin = { light = "#FFE6D5" }
-        , skirt = { base = "#3771C8", lower = "#1091FF", low = "#80B3FF", mid = "#8FBAFF", light = "#D5E5FF", shade = "#5A6F90" }
-        , boots = "#F4EED7"
-        , hairclip = { base = "#AAEEFF", shade = "#0D7AD6" }
-        }
-    , system9tanGreen =
-        { skin = { light = "#FFE6D5" }
-        , skirt = { base = "#71C837", lower = "#91FF10", low = "#B3FF80", mid = "#BAFF8F", light = "#E5FFD5", shade = "#6F905A" }
-        , boots = "#F4EED7"
-        , hairclip = { base = "#EEFFAA", shade = "#7AD60D" }
-        }
-    }
-
-
 type Fabric
-    = Solid
+    = Default
+    | Solid String
     | Flower
     | Shawl
     | Shawl2
@@ -78,9 +46,12 @@ defs =
 
 
 fill : Fabric -> String -> Svg.Attribute msg
-fill fabric color =
+fill fabric defaultColor =
     case fabric of
-        Solid ->
+        Default ->
+            Svg.Attributes.fill defaultColor
+
+        Solid color ->
             Svg.Attributes.fill color
 
         Flower ->
@@ -95,3 +66,13 @@ fill fabric color =
 
 shadow =
     Svg.Attributes.filter "url(#shadow)"
+
+
+list =
+    [ Solid "lightGreen"
+    , Solid "lightBlue"
+    , Solid "pink"
+    , Flower
+    , Shawl
+    , Shawl2
+    ]
