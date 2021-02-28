@@ -248,7 +248,7 @@ menu =
 
 background color =
     Html.div
-        [ Attr.style "font-family" "TheGirlNextDoor-Regular"
+        [ Attr.style "font-family" "girlNextDoor"
         , Attr.style "width" "100vw"
         , Attr.style "height" "100vh"
         , Attr.style "background-color" (renderColor color)
