@@ -80,21 +80,26 @@ build =
     , body =
         startFrom ( -10, 45 )
             |> lineToRel
-                ([ ( 0, 16 ), ( -20, 0 ), ( 16, 76 ), ( -8, 34 ), ( -6, 30 ), ( 4, 40 ), ( 10, 40 ), ( 4, 16 ), ( -4, 18 ), ( -2, 22 ), ( 0, 32 ) ]
+                ([ ( 0, 16 ), ( -20, 0 ), ( 14, 76 ), ( -11, 34 ), ( -1, 30 ), ( 4, 40 ), ( 10, 40 ), ( 4, 16 ), ( -4, 18 ), ( -2, 22 ), ( 0, 32 ) ]
                     ++ [ ( 2, 22 ), ( -6, 22 ), ( 2, 18 ), ( 6, 10 ), ( 8, -16 ), ( -2, -20 ), ( -2, -12 ), ( 6, -52 ), ( 4, 32 ), ( 2, 24 ), ( 2, 20 ), ( -2, 16 ) ]
                     ++ [ ( 6, 24 ), ( 12, -14 ), ( -6, -26 ), ( -4, -12 ), ( 2, -10 ), ( 4, -28 ), ( 2, -14 ), ( -2, -16 ), ( -4, -22 ), ( 16, -66 ), ( 6, -30 ) ]
-                    ++ [ ( 2, -32 ), ( -10, -22 ), ( -12, -22 ), ( 2, -8 ), ( 8, -70 ), ( -20, -4 ), ( -2, -12 ) ]
+                    ++ [ ( 2, -32 ), ( -6, -22 ), ( -10, -22 ), ( -2, -8 ), ( 8, -70 ), ( -22, -4 ), ( -2, -12 ) ]
                 )
             |> moveTo ( 4, 202 )
             |> lineToRel [ ( -4, 42 ), ( -2, 52 ), ( 0, 44 ) ]
             |> moveTo ( -14, 183 )
             |> lineToRel [ ( 18, 18 ), ( 16, -16 ) ]
+    , breasts =
+        startFrom ( -24, 82 )
+            |> cubicRel [ ( -16, 22 ), ( 10, 40 ), ( 20, 18 ) ]
+            |> moveTo ( 2, 102 )
+            |> cubicRel [ ( 12, 20 ), ( 38, 6 ), ( 22, -16 ) ]
     , leftArm =
         startFrom ( -28, 60 )
             |> lineToRel
                 [ ( -12, 10 ), ( -6, 50 ), ( -4, 8 ), ( -8, 10 ), ( -12, 20 ), ( -12, 14 ), ( -16, 10 ), ( -2, 14 ), ( 6, 4 ), ( 12, -8 ), ( 6, -8 ), ( -2, -6 ), ( 20, -18 ), ( 16, -18 ), ( 4, -8 ), ( 12, -46 ) ]
     , rightArm =
-        startFrom ( 26, 65 )
+        startFrom ( 26, 64 )
             |> lineToRel [ ( 8, 6 ), ( 6, 12 ), ( 4, 24 ), ( 10, 24 ), ( 10, 16 ), ( 10, 16 ), ( 8, 14 ), ( 6, 12 ), ( 10, 2 ), ( 6, 10 ), ( -2, 10 ), ( -10, -4 ), ( -12, -16 ), ( -26, -34 ), ( -6, -6 ), ( -20, -50 ) ]
     }
 
@@ -102,48 +107,59 @@ build =
 part : (Fabric -> Part -> msg) -> Part -> Fabric.Coloring -> Fabric -> Svg msg
 part msg p coloring fabric =
     let
-        group fillColor strokeColor =
+        group fillColor strokeColor attributes =
             Svg.g
-                [ onClick <| msg fabric p
-                , Fabric.fill fabric fillColor
-                , stroke strokeColor
-                ]
+                ([ onClick <| msg fabric p
+                 , Fabric.fill fabric fillColor
+                 , stroke strokeColor
+                 ]
+                    ++ attributes
+                )
     in
     case p of
         Cloth color ->
             group color
                 "none"
+                []
                 [ Svg.rect [ Fabric.fill fabric color, x "-25", y "-25", width "50", height "50" ] []
                 ]
 
         Girl parts ->
             group coloring.skirt.base
                 "none"
+                []
                 [ Fabric.defs, girl msg parts coloring fabric ]
 
         Body ->
-            group "brown"
+            group "white"
                 "black"
-                [ Svg.path [ d build.body ] []
-                , Svg.path [ d build.head ] []
-                , Svg.path [ d build.leftArm ] []
-                , Svg.path [ d build.rightArm ] []
+                []
+                [ group "brown"
+                    "#331122"
+                    [ transform "translate(5,-160)" ]
+                    [ Svg.path [ d build.body ] []
+                    , Svg.path [ transform "scale(0.7) translate(0,27)", d build.head ] []
+                    , Svg.path [ d build.leftArm ] []
+                    , Svg.path [ d build.rightArm ] []
+                    , Svg.path [ d build.breasts ] []
+                    ]
+                , Svg.rect [ x "0", y "0", width "10", height "10" ] []
                 ]
 
         Shirt ->
-            group "white" "black" []
+            group "white" "black" [] []
 
         Sleeves ->
-            group "white" "black" []
+            group "white" "black" [] []
 
         Skirt ->
-            group "white" "black" []
+            group "white" "black" [] []
 
         Boots ->
-            group "white" "black" []
+            group "white" "black" [] []
 
         HairClip ->
-            group "white" "black" []
+            group "white" "black" [] []
 
 
 girl : (Fabric -> Part -> msg) -> List Part -> Fabric.Coloring -> Fabric -> Svg msg
