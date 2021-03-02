@@ -20,8 +20,9 @@ type Part
     | Boots
 
 
-type Msg
+type Msg id
     = Clicked Fabric Part
+    | ClickedGroup id
 
 
 list =

@@ -5,7 +5,7 @@ module Playground exposing
     , image
     , move, moveUp, moveDown, moveLeft, moveRight, moveX, moveY
     , scale, rotate, fade
-    , group
+    , group, clickableGroup
     , Time, spin, wave, zigzag
     , Computer, Mouse, Screen, Keyboard, toX, toY, toXY
     , Color, rgb, red, orange, yellow, green, blue, purple, brown
@@ -55,7 +55,7 @@ module Playground exposing
 
 # Groups
 
-@docs group
+@docs group, clickableGroup
 
 
 # Time
@@ -108,6 +108,7 @@ import Json.Decode as D
 import Set
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import Svg.Events
 import Task
 import Time
 
@@ -736,6 +737,7 @@ type Form msg
     | Image Number Number String
     | Words Color String
     | Group (List (Shape msg))
+    | ClickableGroup msg (List (Shape msg))
     | Drawing (Svg msg)
 
 
@@ -968,6 +970,11 @@ them as a group. Maybe you want to put a bunch of stars in the sky:
 group : List (Shape msg) -> Shape msg
 group shapes =
     Shape 0 0 0 1 1 (Group shapes)
+
+
+clickableGroup : msg -> List (Shape msg) -> Shape msg
+clickableGroup msg shapes =
+    Shape 0 0 0 1 1 (ClickableGroup msg shapes)
 
 
 drawing : Svg msg -> Shape msg
@@ -1489,6 +1496,10 @@ renderShape (Shape x y angle s alpha form) =
 
         Group shapes ->
             g (transform (renderTransform x y angle s) :: renderAlpha alpha)
+                (List.map renderShape shapes)
+
+        ClickableGroup msg shapes ->
+            g (Svg.Events.onClick msg :: transform (renderTransform x y angle s) :: renderAlpha alpha)
                 (List.map renderShape shapes)
 
         Drawing d ->

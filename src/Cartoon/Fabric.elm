@@ -69,10 +69,11 @@ shadow =
 
 
 list =
-    [ Solid "lightGreen"
-    , Solid "lightBlue"
-    , Solid "pink"
-    , Flower
-    , Shawl
-    , Shawl2
-    ]
+    List.reverse
+        [ Solid "lightGreen"
+        , Solid "lightBlue"
+        , Solid "pink"
+        , Flower
+        , Shawl
+        , Shawl2
+        ]

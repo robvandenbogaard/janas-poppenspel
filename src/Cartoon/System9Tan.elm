@@ -35,7 +35,7 @@ coloringGreen =
     }
 
 
-part : ( Fabric, Part ) -> Svg (Playground.Msg Part.Msg)
+part : ( Fabric, Part ) -> Svg (Playground.Msg (Part.Msg a))
 part ( fabric, p ) =
     let
         msg =

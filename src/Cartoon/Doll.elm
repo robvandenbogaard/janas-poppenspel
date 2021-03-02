@@ -112,7 +112,7 @@ build =
     }
 
 
-drawing : ( Fabric, Part ) -> Svg (Playground.Msg Part.Msg)
+drawing : ( Fabric, Part ) -> Svg (Playground.Msg (Part.Msg a))
 drawing ( fabric, p ) =
     let
         group strokeColor attributes =
@@ -170,7 +170,7 @@ drawing ( fabric, p ) =
             group "black" [] []
 
 
-girl : Fabric -> List ( Fabric, Part ) -> Svg (Playground.Msg Part.Msg)
+girl : Fabric -> List ( Fabric, Part ) -> Svg (Playground.Msg (Part.Msg a))
 girl fabric parts =
     List.map drawing (( fabric, Body ) :: parts)
         |> Svg.g [ Svg.Attributes.title <| String.join "" [ "Drawing by ", attribution.author, ": ", attribution.url ] ]
