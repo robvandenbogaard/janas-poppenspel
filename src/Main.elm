@@ -14,13 +14,16 @@ type alias Model =
     { playground : Playground.Game {}
     , clothesInCloset : List ( Fabric, Part )
     , clothesBeingWorn : List ( Fabric, Part )
-    , modus : Modus
+    , kamer : Kamer
+    , schilderij : Expression
+    , pruiken : Expression
     }
 
 
-type Modus
-    = Aankleden Expression
-    | Schilderen Expression
+type Kamer
+    = Slaapkamer
+    | Atelier
+    | Haarstudio
 
 
 type Expression
@@ -36,6 +39,7 @@ type Msg
 
 type ClickableThing
     = Schilderij
+    | Pruiken
     | Walvis
     | Toekan
     | ToekanTak
@@ -57,17 +61,20 @@ main =
                         [ ( Flower, Cartoon.Part.Skirt )
                         , ( Solid "#7755CC", Cartoon.Part.Shirt )
                         ]
-                  , modus =
-                        Aankleden <|
-                            Assignment Schilderij
-                                (Many
-                                    [ Value Walvis
-                                    , Value Toekan
-                                    , Value ToekanTak
-                                    , Value AndereToekan
-                                    , Value AndereToekanTak
-                                    ]
-                                )
+                  , kamer = Slaapkamer
+                  , schilderij =
+                        Assignment Schilderij
+                            (Many
+                                [ Value Walvis
+                                , Value Toekan
+                                , Value ToekanTak
+                                , Value AndereToekan
+                                , Value AndereToekanTak
+                                ]
+                            )
+                  , pruiken =
+                        Assignment Pruiken
+                            (Many [])
                   }
                 , Cmd.map PlaygroundMsg cmd
                 )
@@ -96,28 +103,31 @@ view model =
                 , Attr.style "margin-left" "1em"
                 ]
                 [ Html.text "Jana's poppenspel" ]
-            , Playground.componentView model.playground (scene model.modus model.clothesInCloset model.clothesBeingWorn)
+            , Playground.componentView model.playground (scene model)
                 |> Html.map PlaygroundMsg
             ]
         ]
     }
 
 
-scene modus clothesInCloset clothesBeingWorn computer memory =
-    case modus of
-        Aankleden expressie ->
-            [ schilderij expressie computer.time
-            , bed
-            , kast (kleding clothesInCloset)
-            , slimmeJana clothesBeingWorn
+scene model computer memory =
+    case model.kamer of
+        Atelier ->
+            [ schilderij model.schilderij computer.time
+            , programmeerVakMet model.schilderij
+            , slimmeJana model.clothesBeingWorn
             ]
 
-        Schilderen expressie ->
+        Slaapkamer ->
             [ bed
-            , kast (kleding clothesInCloset)
-            , slimmeJana clothesBeingWorn
-            , schilderij expressie computer.time |> scale 2 |> moveRight 100
-            , programmeerVakMet expressie
+            , kast (kleding model.clothesInCloset)
+            , schilderij model.schilderij computer.time |> scale 2 |> moveRight 100
+            , slimmeJana model.clothesBeingWorn
+            ]
+
+        Haarstudio ->
+            [ stoel
+            , koppen -- keuze (koppen |> met model.pruiken)
             ]
 
 
@@ -176,6 +186,9 @@ naamVan ding =
     case ding of
         Schilderij ->
             "schilderij"
+
+        Pruiken ->
+            "pruiken"
 
         Walvis ->
             "walvis"
@@ -332,6 +345,17 @@ andereToekanTak =
         |> moveLeft 265
 
 
+stoel =
+    group
+        [ rectangle purple 10 100
+        ]
+
+
+koppen =
+    group
+        [ circle white 20 ]
+
+
 bed =
     group
         [ oval lightBlue 360 50
@@ -482,71 +506,73 @@ update msg model =
     case msg of
         PlaygroundMsg pmsg ->
             let
-                ( modus, clothesInCloset, clothesBeingWorn ) =
+                newmodel =
                     case pmsg of
                         Playground.Clicked (Cartoon.Part.ClickedGroup Schilderij) ->
-                            case model.modus of
-                                Aankleden code ->
-                                    ( Schilderen code, model.clothesInCloset, model.clothesBeingWorn )
+                            case model.kamer of
+                                Slaapkamer ->
+                                    { model | kamer = Atelier }
 
-                                Schilderen code ->
-                                    ( Aankleden code, model.clothesInCloset, model.clothesBeingWorn )
+                                Atelier ->
+                                    { model | kamer = Slaapkamer }
+
+                                _ ->
+                                    model
 
                         Playground.Clicked (Cartoon.Part.ClickedGroup clickedThing) ->
-                            case model.modus of
-                                Aankleden _ ->
-                                    ( model.modus, model.clothesInCloset, model.clothesBeingWorn )
-
-                                Schilderen code ->
-                                    if bevat clickedThing code then
-                                        ( Schilderen <| zonder clickedThing code
-                                        , model.clothesInCloset
-                                        , model.clothesBeingWorn
-                                        )
+                            case model.kamer of
+                                Atelier ->
+                                    if model.schilderij |> bevat clickedThing then
+                                        { model
+                                            | schilderij = model.schilderij |> zonder clickedThing
+                                        }
 
                                     else
-                                        ( Schilderen <| met clickedThing code
-                                        , model.clothesInCloset
-                                        , model.clothesBeingWorn
-                                        )
+                                        { model
+                                            | schilderij = model.schilderij |> met clickedThing
+                                        }
+
+                                _ ->
+                                    model
 
                         Playground.Clicked (Cartoon.Part.Clicked clickedFabric clickedPart) ->
-                            case model.modus of
-                                Aankleden _ ->
+                            case model.kamer of
+                                Slaapkamer ->
                                     case clickedPart of
                                         Cartoon.Part.Patch ->
-                                            ( model.modus, model.clothesInCloset, model.clothesBeingWorn )
+                                            model
 
                                         Cartoon.Part.Girl _ ->
-                                            ( model.modus, model.clothesInCloset, model.clothesBeingWorn )
+                                            model
 
                                         _ ->
                                             if List.member ( clickedFabric, clickedPart ) model.clothesInCloset then
-                                                ( model.modus
-                                                , List.filter (\c -> c /= ( clickedFabric, clickedPart )) model.clothesInCloset
-                                                , Cartoon.addClothes ( clickedFabric, clickedPart ) model.clothesBeingWorn
-                                                )
+                                                { model
+                                                    | clothesInCloset =
+                                                        List.filter (\c -> c /= ( clickedFabric, clickedPart )) model.clothesInCloset
+                                                    , clothesBeingWorn =
+                                                        Cartoon.addClothes ( clickedFabric, clickedPart ) model.clothesBeingWorn
+                                                }
 
                                             else
-                                                ( model.modus
-                                                , ( clickedFabric, clickedPart ) :: model.clothesInCloset
-                                                , List.filter (\( _, p ) -> p /= clickedPart) model.clothesBeingWorn
-                                                )
+                                                { model
+                                                    | clothesInCloset =
+                                                        ( clickedFabric, clickedPart ) :: model.clothesInCloset
+                                                    , clothesBeingWorn =
+                                                        List.filter (\( _, p ) -> p /= clickedPart) model.clothesBeingWorn
+                                                }
 
                                 _ ->
-                                    ( model.modus, model.clothesInCloset, model.clothesBeingWorn )
+                                    model
 
                         _ ->
-                            ( model.modus, model.clothesInCloset, model.clothesBeingWorn )
+                            model
 
                 ( playground, cmd ) =
                     Playground.componentUpdate updatePlayground pmsg model.playground
             in
-            ( { model
+            ( { newmodel
                 | playground = playground
-                , clothesInCloset = clothesInCloset
-                , clothesBeingWorn = clothesBeingWorn
-                , modus = modus
               }
             , Cmd.map PlaygroundMsg cmd
             )
