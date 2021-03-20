@@ -45,6 +45,7 @@ type ClickableThing
     | ToekanTak
     | AndereToekan
     | AndereToekanTak
+    | GaNaar Kamer
 
 
 main =
@@ -111,30 +112,78 @@ view model =
 
 
 scene model computer memory =
+    let
+        when x y =
+            if x then
+                y
+
+            else
+                identity
+
+        atelier =
+            clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Atelier)
+                [ rectangle pink 1000 1000
+                , schilderij model.schilderij computer.time
+                    |> scale 2
+                    |> moveRight 190
+                    |> moveUp 50
+                , laptop
+                    |> moveDown 200
+                ]
+
+        slaapkamer =
+            clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Slaapkamer)
+                [ rectangle pink 1000 1000
+                , bed
+                , kast (kleding model.clothesInCloset)
+                , schilderij model.schilderij computer.time
+                ]
+
+        haarstudio =
+            clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Haarstudio)
+                [ rectangle pink 1000 1000
+                , stoel
+                , koppen -- keuze (koppen |> met model.pruiken)
+                ]
+
+        kamerkiezer =
+            group
+                [ slaapkamer |> when (model.kamer == Slaapkamer) (fade 0.2)
+                , haarstudio |> moveDown 1000 |> when (model.kamer == Haarstudio) (fade 0.2)
+                , atelier |> moveDown 2000 |> when (model.kamer == Atelier) (fade 0.2)
+                ]
+                |> scale 0.2
+                |> moveRight 600
+                |> moveUp 300
+    in
     case model.kamer of
         Atelier ->
-            [ schilderij model.schilderij computer.time
+            [ atelier
             , programmeerVakMet model.schilderij
+                |> moveDown 200
             , slimmeJana model.clothesBeingWorn
+                |> moveLeft 100
+            , kamerkiezer
             ]
 
         Slaapkamer ->
-            [ bed
-            , kast (kleding model.clothesInCloset)
-            , schilderij model.schilderij computer.time |> scale 2 |> moveRight 100
+            [ slaapkamer
             , slimmeJana model.clothesBeingWorn
+            , kamerkiezer
             ]
 
         Haarstudio ->
-            [ stoel
-            , koppen -- keuze (koppen |> met model.pruiken)
+            [ haarstudio
+            , slimmeJana model.clothesBeingWorn
+            , kamerkiezer
             ]
 
 
 programmeerVakMet expressie =
-    programmeerBlokMet 0 expressie
-        |> moveUp 360
-        |> moveRight 115
+    group
+        [ rectangle darkGreen 450 250
+        , programmeerBlokMet 0 expressie
+        ]
 
 
 programmeerBlokVastMet hoogte label =
@@ -205,6 +254,21 @@ naamVan ding =
         AndereToekanTak ->
             "andereToekanTak"
 
+        GaNaar kamer ->
+            "gaNaar" ++ naamVanKamer kamer
+
+
+naamVanKamer kamer =
+    case kamer of
+        Slaapkamer ->
+            "slaapkamer"
+
+        Haarstudio ->
+            "haarstudio"
+
+        Atelier ->
+            "atelier"
+
 
 bevat waarde expressie =
     case expressie of
@@ -261,6 +325,15 @@ met waarde expressie =
 
         Zilch ->
             Zilch
+
+
+laptop =
+    group
+        [ rectangle darkGray 500 50
+            |> moveDown (25 + 150 + 1)
+        , rectangle darkGrey 500 300
+        , rectangle darkGreen 450 250
+        ]
 
 
 schilderij expressie tijd =
@@ -508,32 +581,30 @@ update msg model =
             let
                 newmodel =
                     case pmsg of
-                        Playground.Clicked (Cartoon.Part.ClickedGroup Schilderij) ->
-                            case model.kamer of
-                                Slaapkamer ->
-                                    { model | kamer = Atelier }
-
-                                Atelier ->
-                                    { model | kamer = Slaapkamer }
-
-                                _ ->
-                                    model
-
                         Playground.Clicked (Cartoon.Part.ClickedGroup clickedThing) ->
-                            case model.kamer of
-                                Atelier ->
-                                    if model.schilderij |> bevat clickedThing then
-                                        { model
-                                            | schilderij = model.schilderij |> zonder clickedThing
-                                        }
-
-                                    else
-                                        { model
-                                            | schilderij = model.schilderij |> met clickedThing
-                                        }
+                            let
+                                _ =
+                                    Debug.log "playground clicked:" clickedThing
+                            in
+                            case clickedThing of
+                                GaNaar kamer ->
+                                    { model | kamer = kamer }
 
                                 _ ->
-                                    model
+                                    case model.kamer of
+                                        Atelier ->
+                                            if model.schilderij |> bevat clickedThing then
+                                                { model
+                                                    | schilderij = model.schilderij |> zonder clickedThing
+                                                }
+
+                                            else
+                                                { model
+                                                    | schilderij = model.schilderij |> met clickedThing
+                                                }
+
+                                        _ ->
+                                            model
 
                         Playground.Clicked (Cartoon.Part.Clicked clickedFabric clickedPart) ->
                             case model.kamer of
@@ -551,7 +622,8 @@ update msg model =
                                                     | clothesInCloset =
                                                         List.filter (\c -> c /= ( clickedFabric, clickedPart )) model.clothesInCloset
                                                     , clothesBeingWorn =
-                                                        Cartoon.addClothes ( clickedFabric, clickedPart ) model.clothesBeingWorn
+                                                        Debug.log "clothes" <|
+                                                            Cartoon.addClothes ( clickedFabric, clickedPart ) model.clothesBeingWorn
                                                 }
 
                                             else
