@@ -941,7 +941,7 @@ words color string =
 
 code : Color -> String -> Shape msg
 code color string =
-    Shape 0 0 0 1 1 0 0 (Code color string)
+    Shape 0 0 0 1 1 (Code color string)
 
 
 {-| Put shapes together so you can [`move`](#move) and [`rotate`](#rotate)
@@ -1501,7 +1501,7 @@ renderShape (Shape x y angle s alpha form) =
             renderWords color string x y angle s alpha
 
         Code color string ->
-            renderCode color string x y angle s alpha ti tu
+            renderCode color string x y angle s alpha
 
         Group shapes ->
             g (transform (renderTransform x y angle s) :: renderAlpha alpha)
@@ -1652,8 +1652,8 @@ renderWords color string x y angle s alpha =
         ]
 
 
-renderCode : Color -> String -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
-renderCode color string x y angle s alpha ti tu =
+renderCode : Color -> String -> Number -> Number -> Number -> Number -> Number -> Svg msg
+renderCode color string x y angle s alpha =
     text_
         (textAnchor "left"
             :: fontFamily "monospace"
@@ -1662,7 +1662,6 @@ renderCode color string x y angle s alpha ti tu =
             :: fill (renderColor color)
             :: transform (renderTransform x y angle s)
             :: renderAlpha alpha
-            ++ renderTransform3D ti tu
         )
         [ text string
         ]
