@@ -27,10 +27,12 @@ type Kamer
 
 
 type Expression
-    = Assignment ClickableThing Expression
+    = Definition ClickableThing (List Expression) Expression
     | Value ClickableThing
     | Many (List Expression)
     | Zilch
+    | Application Expression Expression
+    | Pipeline Expression Expression
 
 
 type Msg
@@ -46,6 +48,8 @@ type ClickableThing
     | AndereToekan
     | AndereToekanTak
     | GaNaar Kamer
+    | Beweeg
+    | Tijd
 
 
 main =
@@ -64,17 +68,21 @@ main =
                         ]
                   , kamer = Slaapkamer
                   , schilderij =
-                        Assignment Schilderij
+                        Definition Schilderij
+                            [ Value Tijd ]
                             (Many
                                 [ Value Walvis
-                                , Value Toekan
+                                , Application (Value Beweeg) (Many [ Value Tijd, Value Toekan ])
+
+                                -- , Pipeline (Value Toekan) (Application (Value Beweeg) (Value Tijd) )
                                 , Value ToekanTak
                                 , Value AndereToekan
                                 , Value AndereToekanTak
                                 ]
                             )
                   , pruiken =
-                        Assignment Pruiken
+                        Definition Pruiken
+                            []
                             (Many [])
                   }
                 , Cmd.map PlaygroundMsg cmd
@@ -111,15 +119,16 @@ view model =
     }
 
 
+when x y =
+    if x then
+        y
+
+    else
+        identity
+
+
 scene model computer memory =
     let
-        when x y =
-            if x then
-                y
-
-            else
-                identity
-
         kamer k =
             case k of
                 Atelier ->
@@ -225,11 +234,41 @@ codeBlokMet expressies ( ( x, y, z ), blokken ) =
     List.foldl codeMet ( ( x, y, z ), blokken ) expressies
 
 
+codePipeline expressies ( ( x, y, z ), blokken ) =
+    let
+        pipeline expressie code =
+            code
+                |> meerInspringen
+                |> codeTekst "|>"
+                |> codeMet expressie
+                |> minderInspringen
+    in
+    List.foldl pipeline
+        ( ( x, y, z ), blokken )
+        (case expressies of
+            Value waarde ->
+                [ Value waarde ]
+
+            Many parameters ->
+                parameters
+
+            _ ->
+                let
+                    _ =
+                        Debug.log "Error" "?Syntax error"
+                in
+                []
+        )
+
+
 codeMet expressie ( ( x, y, z ), blokken ) =
     case expressie of
-        Assignment ding waarde ->
+        Definition ding parameters waarde ->
             ( ( x, y, z ), blokken )
-                |> codeTekst (naamVan ding ++ " =")
+                |> codeTekst (naamVan ding)
+                |> when (parameters /= []) (codeTekst "met")
+                |> codeBlokMet parameters
+                |> codeTekst "="
                 |> codeMet waarde
 
         Value waarde ->
@@ -238,13 +277,45 @@ codeMet expressie ( ( x, y, z ), blokken ) =
 
         Many moreExpressions ->
             ( ( x, y, z ), blokken )
-                |> inspringen
+                |> meerInspringen
                 |> codeTekst "["
                 |> codeBlokMet moreExpressions
                 |> codeTekst "]"
+                |> minderInspringen
 
         Zilch ->
             ( ( x, y, z ), blokken )
+
+        Application expression parameterExpression ->
+            let
+                parameters =
+                    case parameterExpression of
+                        Value waarde ->
+                            [ Value waarde ]
+
+                        Many params ->
+                            params
+
+                        _ ->
+                            let
+                                _ =
+                                    Debug.log "Error" "?Syntax error"
+                            in
+                            []
+            in
+            ( ( x, y, z ), blokken )
+                |> codeTekst "("
+                |> codeMet expression
+                |> when (parameters /= []) (codeTekst "met")
+                |> codeBlokMet parameters
+                |> codeTekst ")"
+
+        Pipeline expression parameters ->
+            ( ( x, y, z ), blokken )
+                |> codeTekst "("
+                |> codeMet expression
+                |> codePipeline parameters
+                |> codeTekst ")"
 
 
 plaatsVoorEnNa tekst ( x, y, z ) =
@@ -263,8 +334,21 @@ enter ( ( x, y, z ), code ) =
     ( ( 0, y + 1, z ), code )
 
 
-inspringen ( ( x, y, z ), code ) =
+meerInspringen ( ( x, y, z ), code ) =
     ( ( 0, y + 1, z + 1 ), code )
+
+
+minderInspringen ( ( x, y, z ), code ) =
+    ( ( 0
+      , y + 1
+      , if z > 0 then
+            z - 1
+
+        else
+            0
+      )
+    , code
+    )
 
 
 plaats : ( Int, Int, Int ) -> Shape msg -> Shape msg
@@ -318,6 +402,12 @@ naamVan ding =
         GaNaar kamer ->
             "gaNaar" ++ naamVanKamer kamer
 
+        Beweeg ->
+            "beweeg"
+
+        Tijd ->
+            "tijd"
+
 
 naamVanKamer kamer =
     case kamer of
@@ -333,7 +423,7 @@ naamVanKamer kamer =
 
 bevat waarde expressie =
     case expressie of
-        Assignment _ nogEenExpressie ->
+        Definition _ _ nogEenExpressie ->
             bevat waarde nogEenExpressie
 
         Value ookEenWaarde ->
@@ -345,16 +435,22 @@ bevat waarde expressie =
         Zilch ->
             False
 
+        Application nogEenExpressie parameters ->
+            bevat waarde nogEenExpressie || bevat waarde parameters
+
+        Pipeline nogEenExpressie parameters ->
+            bevat waarde nogEenExpressie || bevat waarde parameters
+
 
 zonder waarde expressie =
     case expressie of
-        Assignment ding nogEenExpressie ->
+        Definition ding parameters nogEenExpressie ->
             if ding == waarde then
                 Zilch
 
             else
                 zonder waarde nogEenExpressie
-                    |> Assignment ding
+                    |> Definition ding parameters
 
         Value ookEenWaarde ->
             if ookEenWaarde == waarde then
@@ -372,11 +468,33 @@ zonder waarde expressie =
         Zilch ->
             Zilch
 
+        Application nogEenExpressie parameters ->
+            let
+                z =
+                    zonder waarde nogEenExpressie
+            in
+            if z == Zilch then
+                Zilch
+
+            else
+                Application z (zonder waarde parameters)
+
+        Pipeline nogEenExpressie parameters ->
+            let
+                z =
+                    zonder waarde nogEenExpressie
+            in
+            if z == Zilch then
+                Zilch
+
+            else
+                Pipeline z (zonder waarde parameters)
+
 
 met waarde expressie =
     case expressie of
-        Assignment ding nogEenExpressie ->
-            Assignment ding (met waarde nogEenExpressie)
+        Definition ding parameters nogEenExpressie ->
+            Definition ding parameters (met waarde nogEenExpressie)
 
         Value _ ->
             expressie
@@ -386,6 +504,12 @@ met waarde expressie =
 
         Zilch ->
             Zilch
+
+        Application _ _ ->
+            expressie
+
+        Pipeline _ _ ->
+            expressie
 
 
 laptop =
