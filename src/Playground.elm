@@ -1,7 +1,7 @@
 module Playground exposing
     ( componentInit, componentView, componentUpdate, componentSubscriptions, Game, Msg(..)
     , Shape, circle, oval, square, rectangle, triangle, pentagon, hexagon, octagon, polygon, drawing
-    , words
+    , words, code
     , image
     , move, moveUp, moveDown, moveLeft, moveRight, moveX, moveY
     , scale, rotate, fade
@@ -35,7 +35,7 @@ module Playground exposing
 
 # Words
 
-@docs words
+@docs words, code
 
 
 # Images
@@ -736,6 +736,7 @@ type Form msg
     | Polygon Color (List ( Number, Number ))
     | Image Number Number String
     | Words Color String
+    | Code Color String
     | Group (List (Shape msg))
     | ClickableGroup msg (List (Shape msg))
     | Drawing (Svg msg)
@@ -936,6 +937,11 @@ You can use [`scale`](#scale) to make the words bigger or smaller.
 words : Color -> String -> Shape msg
 words color string =
     Shape 0 0 0 1 1 (Words color string)
+
+
+code : Color -> String -> Shape msg
+code color string =
+    Shape 0 0 0 1 1 (Code color string)
 
 
 {-| Put shapes together so you can [`move`](#move) and [`rotate`](#rotate)
@@ -1494,6 +1500,9 @@ renderShape (Shape x y angle s alpha form) =
         Words color string ->
             renderWords color string x y angle s alpha
 
+        Code color string ->
+            renderCode color string x y angle s alpha
+
         Group shapes ->
             g (transform (renderTransform x y angle s) :: renderAlpha alpha)
                 (List.map renderShape shapes)
@@ -1635,6 +1644,21 @@ renderWords color string x y angle s alpha =
     text_
         (textAnchor "middle"
             :: dominantBaseline "central"
+            :: fill (renderColor color)
+            :: transform (renderTransform x y angle s)
+            :: renderAlpha alpha
+        )
+        [ text string
+        ]
+
+
+renderCode : Color -> String -> Number -> Number -> Number -> Number -> Number -> Svg msg
+renderCode color string x y angle s alpha =
+    text_
+        (textAnchor "left"
+            :: fontFamily "monospace"
+            :: fontSize "20px"
+            :: dominantBaseline "middle"
             :: fill (renderColor color)
             :: transform (renderTransform x y angle s)
             :: renderAlpha alpha

@@ -14,20 +14,25 @@ type alias Model =
     { playground : Playground.Game {}
     , clothesInCloset : List ( Fabric, Part )
     , clothesBeingWorn : List ( Fabric, Part )
-    , modus : Modus
+    , kamer : Kamer
+    , schilderij : Expression
+    , pruiken : Expression
     }
 
 
-type Modus
-    = Aankleden Expression
-    | Schilderen Expression
+type Kamer
+    = Slaapkamer
+    | Atelier
+    | Haarstudio
 
 
 type Expression
-    = Assignment ClickableThing Expression
+    = Definition ClickableThing (List Expression) Expression
     | Value ClickableThing
     | Many (List Expression)
     | Zilch
+    | Application Expression Expression
+    | Pipeline Expression Expression
 
 
 type Msg
@@ -36,11 +41,15 @@ type Msg
 
 type ClickableThing
     = Schilderij
+    | Pruiken
     | Walvis
     | Toekan
     | ToekanTak
     | AndereToekan
     | AndereToekanTak
+    | GaNaar Kamer
+    | Beweeg
+    | Tijd
 
 
 main =
@@ -57,17 +66,23 @@ main =
                         [ ( Flower, Cartoon.Part.Skirt )
                         , ( Solid "#7755CC", Cartoon.Part.Shirt )
                         ]
-                  , modus =
-                        Aankleden <|
-                            Assignment Schilderij
-                                (Many
-                                    [ Value Walvis
-                                    , Value Toekan
-                                    , Value ToekanTak
-                                    , Value AndereToekan
-                                    , Value AndereToekanTak
-                                    ]
-                                )
+                  , kamer = Slaapkamer
+                  , schilderij =
+                        Definition Schilderij
+                            [ Value Tijd ]
+                            (Many
+                                [ Value Walvis
+                                , Application (Value Beweeg) (Many [ Value Tijd, Value Toekan ])
+                                , Pipeline (Value Toekan) (Application (Value Beweeg) (Value Tijd))
+                                , Value ToekanTak
+                                , Value AndereToekan
+                                , Value AndereToekanTak
+                                ]
+                            )
+                  , pruiken =
+                        Definition Pruiken
+                            []
+                            (Many [])
                   }
                 , Cmd.map PlaygroundMsg cmd
                 )
@@ -96,86 +111,263 @@ view model =
                 , Attr.style "margin-left" "1em"
                 ]
                 [ Html.text "Jana's poppenspel" ]
-            , Playground.componentView model.playground (scene model.modus model.clothesInCloset model.clothesBeingWorn)
+            , Playground.componentView model.playground (scene model)
                 |> Html.map PlaygroundMsg
             ]
         ]
     }
 
 
-scene modus clothesInCloset clothesBeingWorn computer memory =
-    case modus of
-        Aankleden expressie ->
-            [ schilderij expressie computer.time
-            , bed
-            , kast (kleding clothesInCloset)
-            , slimmeJana clothesBeingWorn
-            ]
+when x y =
+    if x then
+        y
 
-        Schilderen expressie ->
-            [ bed
-            , kast (kleding clothesInCloset)
-            , slimmeJana clothesBeingWorn
-            , schilderij expressie computer.time |> scale 2 |> moveRight 100
-            , programmeerVakMet expressie
-            ]
+    else
+        identity
 
 
-programmeerVakMet expressie =
-    programmeerBlokMet 0 expressie
-        |> moveUp 360
-        |> moveRight 115
+scene model computer memory =
+    let
+        kamer k =
+            case k of
+                Atelier ->
+                    clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Atelier)
+                        [ rectangle pink 1000 1000
+                        , schilderij model.schilderij computer.time
+                            |> scale 2
+                            |> moveRight 190
+                            |> moveUp 50
+                        , laptop
+                            |> moveDown 200
+                        ]
 
+                Slaapkamer ->
+                    clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Slaapkamer)
+                        [ rectangle pink 1000 1000
+                        , bed
+                        , kast (kleding model.clothesInCloset)
+                        , schilderij model.schilderij computer.time
+                        ]
 
-programmeerBlokVastMet hoogte label =
-    group
-        [ rectangle darkBlue 150 50
-        , words white label
-        ]
-        |> duwNeer hoogte
+                Haarstudio ->
+                    clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Haarstudio)
+                        [ rectangle pink 1000 1000
+                        , stoel
+                        , koppen -- keuze (koppen |> met model.pruiken)
+                        ]
 
-
-programmeerBlokMet hoogte expressie =
-    case expressie of
-        Assignment ding waarde ->
+        kamerkiezer =
             group
-                [ programmeerBlokVastMet hoogte <| naamVan ding ++ " ="
-                , programmeerBlokMet (hoogte + 1) waarde
+                [ kamer Slaapkamer
+                    |> when (model.kamer == Slaapkamer) (fade 0.2)
+                , kamer Haarstudio
+                    |> moveDown 1000
+                    |> when (model.kamer == Haarstudio) (fade 0.2)
+                , kamer Atelier
+                    |> moveDown 2000
+                    |> when (model.kamer == Atelier) (fade 0.2)
                 ]
-                |> duwNeer hoogte
+                |> scale 0.2
+                |> moveRight 600
+                |> moveUp 300
+    in
+    case model.kamer of
+        Atelier ->
+            [ kamer Atelier
+            , programmeerVakMet model.schilderij computer.time
+                |> moveDown 200
+            , slimmeJana model.clothesBeingWorn
+                |> moveLeft 100
+            , kamerkiezer
+            ]
+
+        Slaapkamer ->
+            [ kamer Slaapkamer
+            , slimmeJana model.clothesBeingWorn
+            , kamerkiezer
+            ]
+
+        Haarstudio ->
+            [ kamer Haarstudio
+            , slimmeJana model.clothesBeingWorn
+            , kamerkiezer
+            ]
+
+
+programmeerVakMet expressie tijd =
+    group
+        [ rectangle darkGreen 450 250
+        , codeMet expressie ( ( 0, 0, 0 ), [] )
+            |> plaatsCodeMetCursor tijd
+            |> moveLeft 200
+            |> moveUp 100
+        ]
+
+
+codeTekst tekst ( ( x, y, z ), blokken ) =
+    let
+        ( positie, positieNa ) =
+            plaatsVoorEnNa tekst ( x, y, z )
+    in
+    ( positieNa, ( positie, code lightGreen tekst ) :: blokken )
+
+
+codeWaarde waarde ( ( x, y, z ), blokken ) =
+    let
+        waardeNaam =
+            naamVan waarde
+
+        ( positie, positieNa ) =
+            plaatsVoorEnNa waardeNaam ( x, y, z )
+    in
+    ( positieNa
+    , ( positie
+      , clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup waarde)
+            [ code white waardeNaam ]
+      )
+        :: blokken
+    )
+
+
+codeBlokMet expressies ( ( x, y, z ), blokken ) =
+    List.foldl codeMet ( ( x, y, z ), blokken ) expressies
+
+
+codePipeline expressies ( ( x, y, z ), blokken ) =
+    let
+        pipeline expressie code =
+            code
+                |> meerInspringen
+                |> codeTekst "|>"
+                |> codeMet expressie
+                |> minderInspringen
+    in
+    List.foldl pipeline
+        ( ( x, y, z ), blokken )
+        (case expressies of
+            Many parameters ->
+                parameters
+
+            expressie ->
+                [ expressie ]
+        )
+
+
+codeMet expressie ( ( x, y, z ), blokken ) =
+    case expressie of
+        Definition ding parameters waarde ->
+            ( ( x, y, z ), blokken )
+                |> codeTekst (naamVan ding)
+                |> when (parameters /= []) (codeTekst "met")
+                |> codeBlokMet parameters
+                |> codeTekst "="
+                |> codeMet waarde
 
         Value waarde ->
-            clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup waarde)
-                [ rectangle blue 150 50
-                , words white <| naamVan waarde
-                ]
-                |> duwNeer hoogte
+            ( ( x, y, z ), blokken )
+                |> codeWaarde waarde
 
         Many moreExpressions ->
-            group
-                [ programmeerBlokVastMet hoogte "["
-                , stapel (hoogte + 1) (List.map (programmeerBlokMet 0) moreExpressions)
-                , programmeerBlokVastMet (hoogte + toFloat (List.length moreExpressions)) "]"
-                ]
+            ( ( x, y, z ), blokken )
+                |> meerInspringen
+                |> codeTekst "["
+                |> codeBlokMet moreExpressions
+                |> codeTekst "]"
+                |> minderInspringen
 
         Zilch ->
-            group []
+            ( ( x, y, z ), blokken )
+
+        Application functie parameterExpression ->
+            let
+                parameters =
+                    case parameterExpression of
+                        Many params ->
+                            params
+
+                        param ->
+                            [ param ]
+            in
+            ( ( x, y, z ), blokken )
+                |> codeTekst "("
+                |> codeMet functie
+                |> when (parameters /= []) (codeTekst "met")
+                |> codeBlokMet parameters
+                |> codeTekst ")"
+
+        Pipeline expression parameters ->
+            ( ( x, y, z ), blokken )
+                |> codeTekst "("
+                |> codeMet expression
+                |> codePipeline parameters
+                |> codeTekst ")"
 
 
-duwNeer hoogte =
-    moveDown (60 * hoogte)
+plaatsVoorEnNa tekst ( x, y, z ) =
+    let
+        length =
+            1 + String.length tekst
+    in
+    if x + length > 30 then
+        ( ( 0, y + 1, z ), ( length, y + 1, z ) )
+
+    else
+        ( ( x, y, z ), ( x + length, y, z ) )
 
 
-stapel hoogte blokken =
+enter ( ( x, y, z ), code ) =
+    ( ( 0, y + 1, z ), code )
+
+
+meerInspringen ( ( x, y, z ), code ) =
+    ( ( 0, y + 1, z + 1 ), code )
+
+
+minderInspringen ( ( x, y, z ), code ) =
+    ( ( 0
+      , y + 1
+      , if z > 0 then
+            z - 1
+
+        else
+            0
+      )
+    , code
+    )
+
+
+plaats : ( Int, Int, Int ) -> Shape msg -> Shape msg
+plaats ( x, y, z ) =
+    move (20 * toFloat z + 12 * toFloat x) (-22 * toFloat y)
+
+
+plaatsCodeEnVoegToe : ( ( Int, Int, Int ), Shape msg ) -> List (Shape msg) -> List (Shape msg)
+plaatsCodeEnVoegToe ( ( x, y, z ), blok ) blokken =
+    plaats ( x, y, z ) blok :: blokken
+
+
+plaatsCode =
+    Tuple.second >> List.foldl plaatsCodeEnVoegToe [] >> group
+
+
+plaatsCodeMetCursor tijd ( ( x, y, z ), blokken ) =
     group
-        (List.indexedMap (\aantal blok -> blok |> moveDown (toFloat aantal * 60)) blokken)
-        |> duwNeer hoogte
+        (List.foldl plaatsCodeEnVoegToe [] blokken
+            ++ [ rectangle lightGreen 12 20
+                    |> moveRight 6
+                    |> fade (zigzag 0 1 1 tijd)
+                    |> plaats ( x, y, z )
+               ]
+        )
 
 
 naamVan ding =
     case ding of
         Schilderij ->
             "schilderij"
+
+        Pruiken ->
+            "pruiken"
 
         Walvis ->
             "walvis"
@@ -192,10 +384,31 @@ naamVan ding =
         AndereToekanTak ->
             "andereToekanTak"
 
+        GaNaar kamer ->
+            "gaNaar" ++ naamVanKamer kamer
+
+        Beweeg ->
+            "beweeg"
+
+        Tijd ->
+            "tijd"
+
+
+naamVanKamer kamer =
+    case kamer of
+        Slaapkamer ->
+            "slaapkamer"
+
+        Haarstudio ->
+            "haarstudio"
+
+        Atelier ->
+            "atelier"
+
 
 bevat waarde expressie =
     case expressie of
-        Assignment _ nogEenExpressie ->
+        Definition _ _ nogEenExpressie ->
             bevat waarde nogEenExpressie
 
         Value ookEenWaarde ->
@@ -207,16 +420,22 @@ bevat waarde expressie =
         Zilch ->
             False
 
+        Application nogEenExpressie parameters ->
+            bevat waarde nogEenExpressie || bevat waarde parameters
+
+        Pipeline nogEenExpressie parameters ->
+            bevat waarde nogEenExpressie || bevat waarde parameters
+
 
 zonder waarde expressie =
     case expressie of
-        Assignment ding nogEenExpressie ->
+        Definition ding parameters nogEenExpressie ->
             if ding == waarde then
                 Zilch
 
             else
                 zonder waarde nogEenExpressie
-                    |> Assignment ding
+                    |> Definition ding parameters
 
         Value ookEenWaarde ->
             if ookEenWaarde == waarde then
@@ -234,11 +453,33 @@ zonder waarde expressie =
         Zilch ->
             Zilch
 
+        Application nogEenExpressie parameters ->
+            let
+                z =
+                    zonder waarde nogEenExpressie
+            in
+            if z == Zilch then
+                Zilch
+
+            else
+                Application z (zonder waarde parameters)
+
+        Pipeline nogEenExpressie parameters ->
+            let
+                z =
+                    zonder waarde nogEenExpressie
+            in
+            if z == Zilch then
+                Zilch
+
+            else
+                Pipeline z (zonder waarde parameters)
+
 
 met waarde expressie =
     case expressie of
-        Assignment ding nogEenExpressie ->
-            Assignment ding (met waarde nogEenExpressie)
+        Definition ding parameters nogEenExpressie ->
+            Definition ding parameters (met waarde nogEenExpressie)
 
         Value _ ->
             expressie
@@ -248,6 +489,21 @@ met waarde expressie =
 
         Zilch ->
             Zilch
+
+        Application _ _ ->
+            expressie
+
+        Pipeline _ _ ->
+            expressie
+
+
+laptop =
+    group
+        [ rectangle darkGray 500 50
+            |> moveDown (25 + 150 + 1)
+        , rectangle darkGrey 500 300
+        , rectangle darkGreen 450 250
+        ]
 
 
 schilderij expressie tijd =
@@ -330,6 +586,17 @@ andereToekanTak =
     drawing Zomaar.toekanTak2
         |> moveUp 70
         |> moveLeft 265
+
+
+stoel =
+    group
+        [ rectangle purple 10 100
+        ]
+
+
+koppen =
+    group
+        [ circle white 20 ]
 
 
 bed =
@@ -482,71 +749,72 @@ update msg model =
     case msg of
         PlaygroundMsg pmsg ->
             let
-                ( modus, clothesInCloset, clothesBeingWorn ) =
+                newmodel =
                     case pmsg of
-                        Playground.Clicked (Cartoon.Part.ClickedGroup Schilderij) ->
-                            case model.modus of
-                                Aankleden code ->
-                                    ( Schilderen code, model.clothesInCloset, model.clothesBeingWorn )
-
-                                Schilderen code ->
-                                    ( Aankleden code, model.clothesInCloset, model.clothesBeingWorn )
-
                         Playground.Clicked (Cartoon.Part.ClickedGroup clickedThing) ->
-                            case model.modus of
-                                Aankleden _ ->
-                                    ( model.modus, model.clothesInCloset, model.clothesBeingWorn )
+                            let
+                                _ =
+                                    Debug.log "playground clicked:" clickedThing
+                            in
+                            case clickedThing of
+                                GaNaar kamer ->
+                                    { model | kamer = kamer }
 
-                                Schilderen code ->
-                                    if bevat clickedThing code then
-                                        ( Schilderen <| zonder clickedThing code
-                                        , model.clothesInCloset
-                                        , model.clothesBeingWorn
-                                        )
+                                _ ->
+                                    case model.kamer of
+                                        Atelier ->
+                                            if model.schilderij |> bevat clickedThing then
+                                                { model
+                                                    | schilderij = model.schilderij |> zonder clickedThing
+                                                }
 
-                                    else
-                                        ( Schilderen <| met clickedThing code
-                                        , model.clothesInCloset
-                                        , model.clothesBeingWorn
-                                        )
+                                            else
+                                                { model
+                                                    | schilderij = model.schilderij |> met clickedThing
+                                                }
+
+                                        _ ->
+                                            model
 
                         Playground.Clicked (Cartoon.Part.Clicked clickedFabric clickedPart) ->
-                            case model.modus of
-                                Aankleden _ ->
+                            case model.kamer of
+                                Slaapkamer ->
                                     case clickedPart of
                                         Cartoon.Part.Patch ->
-                                            ( model.modus, model.clothesInCloset, model.clothesBeingWorn )
+                                            model
 
                                         Cartoon.Part.Girl _ ->
-                                            ( model.modus, model.clothesInCloset, model.clothesBeingWorn )
+                                            model
 
                                         _ ->
                                             if List.member ( clickedFabric, clickedPart ) model.clothesInCloset then
-                                                ( model.modus
-                                                , List.filter (\c -> c /= ( clickedFabric, clickedPart )) model.clothesInCloset
-                                                , Cartoon.addClothes ( clickedFabric, clickedPart ) model.clothesBeingWorn
-                                                )
+                                                { model
+                                                    | clothesInCloset =
+                                                        List.filter (\c -> c /= ( clickedFabric, clickedPart )) model.clothesInCloset
+                                                    , clothesBeingWorn =
+                                                        Debug.log "clothes" <|
+                                                            Cartoon.addClothes ( clickedFabric, clickedPart ) model.clothesBeingWorn
+                                                }
 
                                             else
-                                                ( model.modus
-                                                , ( clickedFabric, clickedPart ) :: model.clothesInCloset
-                                                , List.filter (\( _, p ) -> p /= clickedPart) model.clothesBeingWorn
-                                                )
+                                                { model
+                                                    | clothesInCloset =
+                                                        ( clickedFabric, clickedPart ) :: model.clothesInCloset
+                                                    , clothesBeingWorn =
+                                                        List.filter (\( _, p ) -> p /= clickedPart) model.clothesBeingWorn
+                                                }
 
                                 _ ->
-                                    ( model.modus, model.clothesInCloset, model.clothesBeingWorn )
+                                    model
 
                         _ ->
-                            ( model.modus, model.clothesInCloset, model.clothesBeingWorn )
+                            model
 
                 ( playground, cmd ) =
                     Playground.componentUpdate updatePlayground pmsg model.playground
             in
-            ( { model
+            ( { newmodel
                 | playground = playground
-                , clothesInCloset = clothesInCloset
-                , clothesBeingWorn = clothesBeingWorn
-                , modus = modus
               }
             , Cmd.map PlaygroundMsg cmd
             )
