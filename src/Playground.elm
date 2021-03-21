@@ -4,7 +4,7 @@ module Playground exposing
     , words, code
     , image
     , move, moveUp, moveDown, moveLeft, moveRight, moveX, moveY
-    , scale, rotate, fade, tilt, turn
+    , scale, rotate, fade
     , group, clickableGroup
     , Time, spin, wave, zigzag
     , Computer, Mouse, Screen, Keyboard, toX, toY, toXY
@@ -50,7 +50,7 @@ module Playground exposing
 
 # Customize Shapes
 
-@docs scale, rotate, fade, tilt, turn
+@docs scale, rotate, fade
 
 
 # Groups
@@ -725,10 +725,6 @@ type Shape msg
         -- scale
         Number
         -- alpha
-        Number
-        -- tilt
-        Number
-        -- turn
         (Form msg)
 
 
@@ -760,7 +756,7 @@ the circle.
 -}
 circle : Color -> Number -> Shape msg
 circle color radius =
-    Shape 0 0 0 1 1 0 0 (Circle color radius)
+    Shape 0 0 0 1 1 (Circle color radius)
 
 
 {-| Make ovals:
@@ -774,7 +770,7 @@ is 200 pixels wide and 100 pixels tall.
 -}
 oval : Color -> Number -> Number -> Shape msg
 oval color width height =
-    Shape 0 0 0 1 1 0 0 (Oval color width height)
+    Shape 0 0 0 1 1 (Oval color width height)
 
 
 {-| Make squares. Here are two squares combined to look like an empty box:
@@ -793,7 +789,7 @@ be 80 pixels by 80 pixels.
 -}
 square : Color -> Number -> Shape msg
 square color n =
-    Shape 0 0 0 1 1 0 0 (Rectangle color n n)
+    Shape 0 0 0 1 1 (Rectangle color n n)
 
 
 {-| Make rectangles. This example makes a red cross:
@@ -812,7 +808,7 @@ part of the cross, the thinner and taller part.
 -}
 rectangle : Color -> Number -> Number -> Shape msg
 rectangle color width height =
-    Shape 0 0 0 1 1 0 0 (Rectangle color width height)
+    Shape 0 0 0 1 1 (Rectangle color width height)
 
 
 {-| Make triangles. So if you wanted to draw the Egyptian pyramids, you could
@@ -831,7 +827,7 @@ the pyramid is `200`. Pretty big!
 -}
 triangle : Color -> Number -> Shape msg
 triangle color radius =
-    Shape 0 0 0 1 1 0 0 (Ngon color 3 radius)
+    Shape 0 0 0 1 1 (Ngon color 3 radius)
 
 
 {-| Make pentagons:
@@ -849,7 +845,7 @@ of the five points is 100 pixels.
 -}
 pentagon : Color -> Number -> Shape msg
 pentagon color radius =
-    Shape 0 0 0 1 1 0 0 (Ngon color 5 radius)
+    Shape 0 0 0 1 1 (Ngon color 5 radius)
 
 
 {-| Make hexagons:
@@ -869,7 +865,7 @@ honeycomb pattern!
 -}
 hexagon : Color -> Number -> Shape msg
 hexagon color radius =
-    Shape 0 0 0 1 1 0 0 (Ngon color 6 radius)
+    Shape 0 0 0 1 1 (Ngon color 6 radius)
 
 
 {-| Make octogons:
@@ -887,7 +883,7 @@ from the center.
 -}
 octagon : Color -> Number -> Shape msg
 octagon color radius =
-    Shape 0 0 0 1 1 0 0 (Ngon color 8 radius)
+    Shape 0 0 0 1 1 (Ngon color 8 radius)
 
 
 {-| Make any shape you want! Here is a very thin triangle:
@@ -906,7 +902,7 @@ octagon color radius =
 -}
 polygon : Color -> List ( Number, Number ) -> Shape msg
 polygon color points =
-    Shape 0 0 0 1 1 0 0 (Polygon color points)
+    Shape 0 0 0 1 1 (Polygon color points)
 
 
 {-| Add some image from the internet:
@@ -923,7 +919,7 @@ You provide the width, height, and then the URL of the image you want to show.
 -}
 image : Number -> Number -> String -> Shape msg
 image w h src =
-    Shape 0 0 0 1 1 0 0 (Image w h src)
+    Shape 0 0 0 1 1 (Image w h src)
 
 
 {-| Show some words!
@@ -940,7 +936,7 @@ You can use [`scale`](#scale) to make the words bigger or smaller.
 -}
 words : Color -> String -> Shape msg
 words color string =
-    Shape 0 0 0 1 1 0 0 (Words color string)
+    Shape 0 0 0 1 1 (Words color string)
 
 
 code : Color -> String -> Shape msg
@@ -979,17 +975,17 @@ them as a group. Maybe you want to put a bunch of stars in the sky:
 -}
 group : List (Shape msg) -> Shape msg
 group shapes =
-    Shape 0 0 0 1 1 0 0 (Group shapes)
+    Shape 0 0 0 1 1 (Group shapes)
 
 
 clickableGroup : msg -> List (Shape msg) -> Shape msg
 clickableGroup msg shapes =
-    Shape 0 0 0 1 1 0 0 (ClickableGroup msg shapes)
+    Shape 0 0 0 1 1 (ClickableGroup msg shapes)
 
 
 drawing : Svg msg -> Shape msg
 drawing d =
-    Shape 0 0 0 1 1 0 0 (Drawing d)
+    Shape 0 0 0 1 1 (Drawing d)
 
 
 
@@ -1014,8 +1010,8 @@ drawing d =
 
 -}
 move : Number -> Number -> Shape msg -> Shape msg
-move dx dy (Shape x y a s o ti tu f) =
-    Shape (x + dx) (y + dy) a s o ti tu f
+move dx dy (Shape x y a s o f) =
+    Shape (x + dx) (y + dy) a s o f
 
 
 {-| Move a shape up by some number of pixels. So if you wanted to make a tree
@@ -1051,8 +1047,8 @@ above the ground, you could move the sky up and the ground down:
 
 -}
 moveDown : Number -> Shape msg -> Shape msg
-moveDown dy (Shape x y a s o ti tu f) =
-    Shape x (y - dy) a s o ti tu f
+moveDown dy (Shape x y a s o f) =
+    Shape x (y - dy) a s o f
 
 
 {-| Move shapes to the left.
@@ -1068,8 +1064,8 @@ moveDown dy (Shape x y a s o ti tu f) =
 
 -}
 moveLeft : Number -> Shape msg -> Shape msg
-moveLeft dx (Shape x y a s o ti tu f) =
-    Shape (x - dx) y a s o ti tu f
+moveLeft dx (Shape x y a s o f) =
+    Shape (x - dx) y a s o f
 
 
 {-| Move shapes to the right.
@@ -1106,8 +1102,8 @@ Using `moveX` feels a bit nicer here because the movement may be positive or neg
 
 -}
 moveX : Number -> Shape msg -> Shape msg
-moveX dx (Shape x y a s o ti tu f) =
-    Shape (x + dx) y a s o ti tu f
+moveX dx (Shape x y a s o f) =
+    Shape (x + dx) y a s o f
 
 
 {-| Move the `y` coordinate of a shape by some amount. Maybe you want to make
@@ -1131,8 +1127,8 @@ top of the screen, since the values are negative sometimes.
 
 -}
 moveY : Number -> Shape msg -> Shape msg
-moveY dy (Shape x y a s o ti tu f) =
-    Shape x (y + dy) a s o ti tu f
+moveY dy (Shape x y a s o f) =
+    Shape x (y + dy) a s o f
 
 
 {-| Make a shape bigger or smaller. So if you wanted some [`words`](#words) to
@@ -1148,8 +1144,8 @@ be larger, you could say:
 
 -}
 scale : Number -> Shape msg -> Shape msg
-scale ns (Shape x y a s o ti tu f) =
-    Shape x y a (s * ns) o ti tu f
+scale ns (Shape x y a s o f) =
+    Shape x y a (s * ns) o f
 
 
 {-| Rotate shapes in degrees.
@@ -1167,8 +1163,8 @@ The degrees go **counter-clockwise** to match the direction of the
 
 -}
 rotate : Number -> Shape msg -> Shape msg
-rotate da (Shape x y a s o ti tu f) =
-    Shape x y (a + da) s o ti tu f
+rotate da (Shape x y a s o f) =
+    Shape x y (a + da) s o f
 
 
 {-| Fade a shape. This lets you make shapes see-through or even completely
@@ -1190,18 +1186,8 @@ and `1` is completely solid.
 
 -}
 fade : Number -> Shape msg -> Shape msg
-fade o (Shape x y a s _ ti tu f) =
-    Shape x y a s o ti tu f
-
-
-tilt : Number -> Shape msg -> Shape msg
-tilt ti (Shape x y a s o _ tu f) =
-    Shape x y a s o ti tu f
-
-
-turn : Number -> Shape msg -> Shape msg
-turn tu (Shape x y a s o ti _ f) =
-    Shape x y a s o ti tu f
+fade o (Shape x y a s _ f) =
+    Shape x y a s o f
 
 
 
@@ -1491,42 +1477,42 @@ render screen shapes =
 
 
 renderShape : Shape msg -> Svg msg
-renderShape (Shape x y angle s alpha ti tu form) =
+renderShape (Shape x y angle s alpha form) =
     case form of
         Circle color radius ->
-            renderCircle color radius x y angle s alpha ti tu
+            renderCircle color radius x y angle s alpha
 
         Oval color width height ->
-            renderOval color width height x y angle s alpha ti tu
+            renderOval color width height x y angle s alpha
 
         Rectangle color width height ->
-            renderRectangle color width height x y angle s alpha ti tu
+            renderRectangle color width height x y angle s alpha
 
         Ngon color n radius ->
-            renderNgon color n radius x y angle s alpha ti tu
+            renderNgon color n radius x y angle s alpha
 
         Polygon color points ->
-            renderPolygon color points x y angle s alpha ti tu
+            renderPolygon color points x y angle s alpha
 
         Image width height src ->
-            renderImage width height src x y angle s alpha ti tu
+            renderImage width height src x y angle s alpha
 
         Words color string ->
-            renderWords color string x y angle s alpha ti tu
+            renderWords color string x y angle s alpha
 
         Code color string ->
             renderCode color string x y angle s alpha ti tu
 
         Group shapes ->
-            g (transform (renderTransform x y angle s) :: renderAlpha alpha ++ renderTransform3D ti tu)
+            g (transform (renderTransform x y angle s) :: renderAlpha alpha)
                 (List.map renderShape shapes)
 
         ClickableGroup msg shapes ->
-            g (Svg.Events.onClick msg :: transform (renderTransform x y angle s) :: renderAlpha alpha ++ renderTransform3D ti tu)
+            g (Svg.Events.onClick msg :: transform (renderTransform x y angle s) :: renderAlpha alpha)
                 (List.map renderShape shapes)
 
         Drawing d ->
-            g (transform (renderTransform x y angle s) :: renderAlpha alpha ++ renderTransform3D ti tu)
+            g (transform (renderTransform x y angle s) :: renderAlpha alpha)
                 [ d ]
 
 
@@ -1534,27 +1520,25 @@ renderShape (Shape x y angle s alpha ti tu form) =
 -- RENDER CIRCLE AND OVAL
 
 
-renderCircle : Color -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
-renderCircle color radius x y angle s alpha ti tu =
+renderCircle : Color -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
+renderCircle color radius x y angle s alpha =
     Svg.circle
         (r (String.fromFloat radius)
             :: fill (renderColor color)
             :: transform (renderTransform x y angle s)
             :: renderAlpha alpha
-            ++ renderTransform3D ti tu
         )
         []
 
 
-renderOval : Color -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
-renderOval color width height x y angle s alpha ti tu =
+renderOval : Color -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
+renderOval color width height x y angle s alpha =
     ellipse
         (rx (String.fromFloat (width / 2))
             :: ry (String.fromFloat (height / 2))
             :: fill (renderColor color)
             :: transform (renderTransform x y angle s)
             :: renderAlpha alpha
-            ++ renderTransform3D ti tu
         )
         []
 
@@ -1563,21 +1547,20 @@ renderOval color width height x y angle s alpha ti tu =
 -- RENDER RECTANGLE AND IMAGE
 
 
-renderRectangle : Color -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
-renderRectangle color w h x y angle s alpha ti tu =
+renderRectangle : Color -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
+renderRectangle color w h x y angle s alpha =
     rect
         (width (String.fromFloat w)
             :: height (String.fromFloat h)
             :: fill (renderColor color)
-            :: transform (renderRectTransform w h x y angle s ti tu)
+            :: transform (renderRectTransform w h x y angle s)
             :: renderAlpha alpha
-            ++ renderTransform3D ti tu
         )
         []
 
 
-renderRectTransform : Number -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> String
-renderRectTransform width height x y angle s ti tu =
+renderRectTransform : Number -> Number -> Number -> Number -> Number -> Number -> String
+renderRectTransform width height x y angle s =
     renderTransform x y angle s
         ++ " translate("
         ++ String.fromFloat (-width / 2)
@@ -1586,15 +1569,14 @@ renderRectTransform width height x y angle s ti tu =
         ++ ")"
 
 
-renderImage : Number -> Number -> String -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
-renderImage w h src x y angle s alpha ti tu =
+renderImage : Number -> Number -> String -> Number -> Number -> Number -> Number -> Number -> Svg msg
+renderImage w h src x y angle s alpha =
     Svg.image
         (xlinkHref src
             :: width (String.fromFloat w)
             :: height (String.fromFloat h)
-            :: transform (renderRectTransform w h x y angle s ti tu)
+            :: transform (renderRectTransform w h x y angle s)
             :: renderAlpha alpha
-            ++ renderTransform3D ti tu
         )
         []
 
@@ -1603,14 +1585,13 @@ renderImage w h src x y angle s alpha ti tu =
 -- RENDER NGON
 
 
-renderNgon : Color -> Int -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
-renderNgon color n radius x y angle s alpha ti tu =
+renderNgon : Color -> Int -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
+renderNgon color n radius x y angle s alpha =
     Svg.polygon
         (points (toNgonPoints 0 n radius "")
             :: fill (renderColor color)
             :: transform (renderTransform x y angle s)
             :: renderAlpha alpha
-            ++ renderTransform3D ti tu
         )
         []
 
@@ -1638,14 +1619,13 @@ toNgonPoints i n radius string =
 -- RENDER POLYGON
 
 
-renderPolygon : Color -> List ( Number, Number ) -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
-renderPolygon color coordinates x y angle s alpha ti tu =
+renderPolygon : Color -> List ( Number, Number ) -> Number -> Number -> Number -> Number -> Number -> Svg msg
+renderPolygon color coordinates x y angle s alpha =
     Svg.polygon
         (points (List.foldl addPoint "" coordinates)
             :: fill (renderColor color)
             :: transform (renderTransform x y angle s)
             :: renderAlpha alpha
-            ++ renderTransform3D ti tu
         )
         []
 
@@ -1659,15 +1639,14 @@ addPoint ( x, y ) str =
 -- RENDER WORDS
 
 
-renderWords : Color -> String -> Number -> Number -> Number -> Number -> Number -> Number -> Number -> Svg msg
-renderWords color string x y angle s alpha ti tu =
+renderWords : Color -> String -> Number -> Number -> Number -> Number -> Number -> Svg msg
+renderWords color string x y angle s alpha =
     text_
         (textAnchor "middle"
             :: dominantBaseline "central"
             :: fill (renderColor color)
             :: transform (renderTransform x y angle s)
             :: renderAlpha alpha
-            ++ renderTransform3D ti tu
         )
         [ text string
         ]
@@ -1734,19 +1713,3 @@ renderTransform x y a s =
 
     else
         "translate(" ++ String.fromFloat x ++ "," ++ String.fromFloat -y ++ ") rotate(" ++ String.fromFloat -a ++ ") scale(" ++ String.fromFloat s ++ ")"
-
-
-renderTransform3D : Number -> Number -> List (Svg.Attribute msg)
-renderTransform3D ti tu =
-    if tu == 0 then
-        if ti == 0 then
-            []
-
-        else
-            [ Svg.Attributes.style <| "transform: rotate3d(1, 0, 0, " ++ String.fromFloat ti ++ "deg)" ]
-
-    else if ti == 0 then
-        [ Svg.Attributes.style <| "transform: rotate3d(0, 1, 0, " ++ String.fromFloat tu ++ "deg)" ]
-
-    else
-        [ Svg.Attributes.style <| "transform: rotate3d(1, 0, 0, " ++ String.fromFloat ti ++ "deg) rotate3d(0, 1, 0, " ++ String.fromFloat tu ++ "deg)" ]
