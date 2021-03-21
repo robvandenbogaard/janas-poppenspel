@@ -120,37 +120,44 @@ scene model computer memory =
             else
                 identity
 
-        atelier =
-            clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Atelier)
-                [ rectangle pink 1000 1000
-                , schilderij model.schilderij computer.time
-                    |> scale 2
-                    |> moveRight 190
-                    |> moveUp 50
-                , laptop
-                    |> moveDown 200
-                ]
+        kamer k =
+            case k of
+                Atelier ->
+                    clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Atelier)
+                        [ rectangle pink 1000 1000
+                        , schilderij model.schilderij computer.time
+                            |> scale 2
+                            |> moveRight 190
+                            |> moveUp 50
+                        , laptop
+                            |> moveDown 200
+                        ]
 
-        slaapkamer =
-            clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Slaapkamer)
-                [ rectangle pink 1000 1000
-                , bed
-                , kast (kleding model.clothesInCloset)
-                , schilderij model.schilderij computer.time
-                ]
+                Slaapkamer ->
+                    clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Slaapkamer)
+                        [ rectangle pink 1000 1000
+                        , bed
+                        , kast (kleding model.clothesInCloset)
+                        , schilderij model.schilderij computer.time
+                        ]
 
-        haarstudio =
-            clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Haarstudio)
-                [ rectangle pink 1000 1000
-                , stoel
-                , koppen -- keuze (koppen |> met model.pruiken)
-                ]
+                Haarstudio ->
+                    clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Haarstudio)
+                        [ rectangle pink 1000 1000
+                        , stoel
+                        , koppen -- keuze (koppen |> met model.pruiken)
+                        ]
 
         kamerkiezer =
             group
-                [ slaapkamer |> when (model.kamer == Slaapkamer) (fade 0.2)
-                , haarstudio |> moveDown 1000 |> when (model.kamer == Haarstudio) (fade 0.2)
-                , atelier |> moveDown 2000 |> when (model.kamer == Atelier) (fade 0.2)
+                [ kamer Slaapkamer
+                    |> when (model.kamer == Slaapkamer) (fade 0.2)
+                , kamer Haarstudio
+                    |> moveDown 1000
+                    |> when (model.kamer == Haarstudio) (fade 0.2)
+                , kamer Atelier
+                    |> moveDown 2000
+                    |> when (model.kamer == Atelier) (fade 0.2)
                 ]
                 |> scale 0.2
                 |> moveRight 600
@@ -158,8 +165,8 @@ scene model computer memory =
     in
     case model.kamer of
         Atelier ->
-            [ atelier
-            , programmeerVakMet model.schilderij
+            [ kamer Atelier
+            , programmeerVakMet model.schilderij computer.time
                 |> moveDown 200
             , slimmeJana model.clothesBeingWorn
                 |> moveLeft 100
@@ -167,68 +174,122 @@ scene model computer memory =
             ]
 
         Slaapkamer ->
-            [ slaapkamer
+            [ kamer Slaapkamer
             , slimmeJana model.clothesBeingWorn
             , kamerkiezer
             ]
 
         Haarstudio ->
-            [ haarstudio
+            [ kamer Haarstudio
             , slimmeJana model.clothesBeingWorn
             , kamerkiezer
             ]
 
 
-programmeerVakMet expressie =
+programmeerVakMet expressie tijd =
     group
         [ rectangle darkGreen 450 250
-        , programmeerBlokMet 0 expressie
+        , codeMet expressie ( ( 0, 0, 0 ), [] )
+            |> plaatsCodeMetCursor tijd
+            |> moveLeft 200
+            |> moveUp 100
         ]
 
 
-programmeerBlokVastMet hoogte label =
-    group
-        [ rectangle darkBlue 150 50
-        , words white label
-        ]
-        |> duwNeer hoogte
+codeTekst tekst ( ( x, y, z ), blokken ) =
+    let
+        ( positie, positieNa ) =
+            plaatsVoorEnNa tekst ( x, y, z )
+    in
+    ( positieNa, ( positie, code lightGreen tekst ) :: blokken )
 
 
-programmeerBlokMet hoogte expressie =
+codeWaarde waarde ( ( x, y, z ), blokken ) =
+    let
+        waardeNaam =
+            naamVan waarde
+
+        ( positie, positieNa ) =
+            plaatsVoorEnNa waardeNaam ( x, y, z )
+    in
+    ( positieNa
+    , ( positie
+      , clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup waarde)
+            [ code white waardeNaam ]
+      )
+        :: blokken
+    )
+
+
+codeBlokMet expressies ( ( x, y, z ), blokken ) =
+    List.foldl codeMet ( ( x, y, z ), blokken ) expressies
+
+
+codeMet expressie ( ( x, y, z ), blokken ) =
     case expressie of
         Assignment ding waarde ->
-            group
-                [ programmeerBlokVastMet hoogte <| naamVan ding ++ " ="
-                , programmeerBlokMet (hoogte + 1) waarde
-                ]
-                |> duwNeer hoogte
+            ( ( x, y, z ), blokken )
+                |> codeTekst (naamVan ding ++ " =")
+                |> codeMet waarde
 
         Value waarde ->
-            clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup waarde)
-                [ rectangle blue 150 50
-                , words white <| naamVan waarde
-                ]
-                |> duwNeer hoogte
+            ( ( x, y, z ), blokken )
+                |> codeWaarde waarde
 
         Many moreExpressions ->
-            group
-                [ programmeerBlokVastMet hoogte "["
-                , stapel (hoogte + 1) (List.map (programmeerBlokMet 0) moreExpressions)
-                , programmeerBlokVastMet (hoogte + toFloat (List.length moreExpressions)) "]"
-                ]
+            ( ( x, y, z ), blokken )
+                |> inspringen
+                |> codeTekst "["
+                |> codeBlokMet moreExpressions
+                |> codeTekst "]"
 
         Zilch ->
-            group []
+            ( ( x, y, z ), blokken )
 
 
-duwNeer hoogte =
-    moveDown (60 * hoogte)
+plaatsVoorEnNa tekst ( x, y, z ) =
+    let
+        length =
+            1 + String.length tekst
+    in
+    if x + length > 30 then
+        ( ( 0, y + 1, z ), ( length, y + 1, z ) )
+
+    else
+        ( ( x, y, z ), ( x + length, y, z ) )
 
 
-stapel hoogte blokken =
+enter ( ( x, y, z ), code ) =
+    ( ( 0, y + 1, z ), code )
+
+
+inspringen ( ( x, y, z ), code ) =
+    ( ( 0, y + 1, z + 1 ), code )
+
+
+plaats : ( Int, Int, Int ) -> Shape msg -> Shape msg
+plaats ( x, y, z ) =
+    move (20 * toFloat z + 12 * toFloat x) (-22 * toFloat y)
+
+
+plaatsCodeEnVoegToe : ( ( Int, Int, Int ), Shape msg ) -> List (Shape msg) -> List (Shape msg)
+plaatsCodeEnVoegToe ( ( x, y, z ), blok ) blokken =
+    plaats ( x, y, z ) blok :: blokken
+
+
+plaatsCode =
+    Tuple.second >> List.foldl plaatsCodeEnVoegToe [] >> group
+
+
+plaatsCodeMetCursor tijd ( ( x, y, z ), blokken ) =
     group
-        (List.indexedMap (\aantal blok -> blok |> moveDown (toFloat aantal * 60)) blokken)
-        |> duwNeer hoogte
+        (List.foldl plaatsCodeEnVoegToe [] blokken
+            ++ [ rectangle lightGreen 12 20
+                    |> moveRight 6
+                    |> fade (zigzag 0 1 1 tijd)
+                    |> plaats ( x, y, z )
+               ]
+        )
 
 
 naamVan ding =
