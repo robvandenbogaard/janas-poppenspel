@@ -73,8 +73,7 @@ main =
                             (Many
                                 [ Value Walvis
                                 , Application (Value Beweeg) (Many [ Value Tijd, Value Toekan ])
-
-                                -- , Pipeline (Value Toekan) (Application (Value Beweeg) (Value Tijd) )
+                                , Pipeline (Value Toekan) (Application (Value Beweeg) (Value Tijd))
                                 , Value ToekanTak
                                 , Value AndereToekan
                                 , Value AndereToekanTak
@@ -246,18 +245,11 @@ codePipeline expressies ( ( x, y, z ), blokken ) =
     List.foldl pipeline
         ( ( x, y, z ), blokken )
         (case expressies of
-            Value waarde ->
-                [ Value waarde ]
-
             Many parameters ->
                 parameters
 
-            _ ->
-                let
-                    _ =
-                        Debug.log "Error" "?Syntax error"
-                in
-                []
+            expressie ->
+                [ expressie ]
         )
 
 
@@ -286,26 +278,19 @@ codeMet expressie ( ( x, y, z ), blokken ) =
         Zilch ->
             ( ( x, y, z ), blokken )
 
-        Application expression parameterExpression ->
+        Application functie parameterExpression ->
             let
                 parameters =
                     case parameterExpression of
-                        Value waarde ->
-                            [ Value waarde ]
-
                         Many params ->
                             params
 
-                        _ ->
-                            let
-                                _ =
-                                    Debug.log "Error" "?Syntax error"
-                            in
-                            []
+                        param ->
+                            [ param ]
             in
             ( ( x, y, z ), blokken )
                 |> codeTekst "("
-                |> codeMet expression
+                |> codeMet functie
                 |> when (parameters /= []) (codeTekst "met")
                 |> codeBlokMet parameters
                 |> codeTekst ")"
