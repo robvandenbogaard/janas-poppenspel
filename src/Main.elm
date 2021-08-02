@@ -1,11 +1,13 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Events
 import Cartoon
 import Cartoon.Fabric exposing (Fabric(..))
 import Cartoon.Part exposing (Part)
 import Html exposing (Html)
 import Html.Attributes as Attr
+import Json.Decode as Decode
 import Playground exposing (..)
 import Zomaar
 
@@ -17,6 +19,13 @@ type alias Model =
     , kamer : Kamer
     , schilderij : Expression
     , pruiken : Expression
+    , typen : Typen
+    }
+
+
+type alias Typen =
+    { position : ( Int, Int, Int )
+    , tekst : String
     }
 
 
@@ -37,6 +46,7 @@ type Expression
 
 type Msg
     = PlaygroundMsg (Playground.Msg (Cartoon.Part.Msg ClickableThing))
+    | OnKey Key
 
 
 type ClickableThing
@@ -83,12 +93,13 @@ main =
                         Definition Pruiken
                             []
                             (Many [])
+                  , typen = Typen ( 0, 0, 0 ) ""
                   }
                 , Cmd.map PlaygroundMsg cmd
                 )
         , view = view
         , update = update
-        , subscriptions = \model -> Sub.map PlaygroundMsg <| Playground.componentSubscriptions p
+        , subscriptions = subscriptions p
         }
 
 
@@ -174,7 +185,7 @@ scene model computer memory =
     case model.kamer of
         Atelier ->
             [ kamer Atelier
-            , programmeerVakMet model.schilderij computer.time
+            , programmeerVakMet model.schilderij model.typen computer.time
                 |> moveDown 200
             , slimmeJana model.clothesBeingWorn
                 |> moveLeft 100
@@ -194,11 +205,11 @@ scene model computer memory =
             ]
 
 
-programmeerVakMet expressie tijd =
+programmeerVakMet expressie typen tijd =
     group
         [ rectangle darkGreen 450 250
         , codeMet expressie ( ( 0, 0, 0 ), [] )
-            |> plaatsCodeMetCursor tijd
+            |> plaatsCodeMetCursor typen.position tijd
             |> moveLeft 200
             |> moveUp 100
         ]
@@ -350,7 +361,7 @@ plaatsCode =
     Tuple.second >> List.foldl plaatsCodeEnVoegToe [] >> group
 
 
-plaatsCodeMetCursor tijd ( ( x, y, z ), blokken ) =
+plaatsCodeMetCursor ( x, y, z ) tijd ( ( lx, ly, lz ), blokken ) =
     group
         (List.foldl plaatsCodeEnVoegToe [] blokken
             ++ [ rectangle lightGreen 12 20
@@ -819,6 +830,122 @@ update msg model =
             , Cmd.map PlaygroundMsg cmd
             )
 
+        OnKey key ->
+            case key of
+                Character char ->
+                    let
+                        ( x, y, z ) =
+                            model.typen.position
+
+                        position =
+                            if z * 4 + x + 1 > 30 then
+                                ( 0, y + 1, z )
+
+                            else
+                                ( x + 1, y, z )
+                    in
+                    ( { model | typen = Typen position (model.typen.tekst ++ String.fromChar char) }
+                    , Cmd.none
+                    )
+
+                Control "Enter" ->
+                    let
+                        ( x, y, z ) =
+                            model.typen.position
+
+                        position =
+                            ( 0, y + 1, z )
+                    in
+                    ( { model | typen = Typen position model.typen.tekst }
+                    , Cmd.none
+                    )
+
+                Control "Tab" ->
+                    let
+                        ( x, y, z ) =
+                            model.typen.position
+
+                        position =
+                            ( x, y, z + 1 )
+                    in
+                    ( { model | typen = Typen position model.typen.tekst }
+                    , Cmd.none
+                    )
+
+                Control "Shift Tab" ->
+                    let
+                        ( x, y, z ) =
+                            model.typen.position
+
+                        position =
+                            if z > 0 then
+                                ( x, y, z - 1 )
+
+                            else
+                                ( x, y, z )
+                    in
+                    ( { model | typen = Typen position model.typen.tekst }
+                    , Cmd.none
+                    )
+
+                Control "Backspace" ->
+                    let
+                        ( x, y, z ) =
+                            model.typen.position
+
+                        position =
+                            if x > 0 then
+                                ( x - 1, y, z )
+
+                            else if z > 0 then
+                                ( 0, y, z - 1 )
+
+                            else if y > 0 then
+                                ( x, y - 1, z )
+
+                            else
+                                ( 0, 0, 0 )
+                    in
+                    ( { model
+                        | typen = Typen position (String.dropRight 1 model.typen.tekst)
+                      }
+                    , Cmd.none
+                    )
+
+                Control c ->
+                    let
+                        _ =
+                            Debug.log "key" c
+                    in
+                    ( model, Cmd.none )
+
 
 updatePlayground computer memory =
     memory
+
+
+type Key
+    = Character Char
+    | Control String
+
+
+keyDecoder : Decode.Decoder Key
+keyDecoder =
+    Decode.map toKey (Decode.field "key" Decode.string)
+
+
+toKey : String -> Key
+toKey string =
+    case String.uncons string of
+        Just ( char, "" ) ->
+            Character char
+
+        _ ->
+            Control string
+
+
+subscriptions p model =
+    Sub.batch
+        [ Sub.map PlaygroundMsg <| Playground.componentSubscriptions p
+        , Browser.Events.onKeyPress <| Decode.map OnKey keyDecoder
+        ]
