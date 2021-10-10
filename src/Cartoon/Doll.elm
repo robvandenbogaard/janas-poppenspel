@@ -35,6 +35,10 @@ addClothes clothes outfit =
         |> List.reverse
 
 
+head =
+    Svg.path [ transform "scale(0.7) translate(0,27)", d build.head ] []
+
+
 build =
     { head =
         startFrom ( 40, -10 )
@@ -110,12 +114,18 @@ drawing ( fabric, p ) =
                 []
                 [ Fabric.defs, girl fabric parts ]
 
+        Head ->
+            group
+                "#331122"
+                []
+                [ head ]
+
         Body ->
             group
                 "#331122"
                 [ transform "translate(5,-160)" ]
                 [ Svg.path [ d build.body ] []
-                , Svg.path [ transform "scale(0.7) translate(0,27)", d build.head ] []
+                , head
                 , Svg.path [ d build.leftArm ] []
                 , Svg.path [ d build.rightArm ] []
                 , Svg.path [ d build.breasts ] []

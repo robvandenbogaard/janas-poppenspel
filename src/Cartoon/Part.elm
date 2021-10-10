@@ -13,6 +13,7 @@ import Svg.Attributes
 type Part
     = Patch
     | Girl (List ( Fabric, Part ))
+    | Head
     | Body
     | Skirt
     | Shirt

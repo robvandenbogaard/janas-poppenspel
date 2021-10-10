@@ -20,6 +20,7 @@ type alias Model =
     , kamer : Kamer
     , schilderij : Expression
     , pruiken : Expression
+    , pruik : Int
     , typen : Typen
     }
 
@@ -53,6 +54,7 @@ type Msg
 type ClickableThing
     = Schilderij
     | Pruiken
+    | Pruik Int
     | Walvis
     | Toekan
     | ToekanTak
@@ -94,6 +96,7 @@ main =
                         Definition Pruiken
                             []
                             (Many [])
+                  , pruik = 1
                   , typen = Typen ( 0, 0, 0 ) ""
                   }
                 , Cmd.map PlaygroundMsg cmd
@@ -145,65 +148,80 @@ scene model computer memory =
         kamer k =
             case k of
                 Atelier ->
-                    clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Atelier)
-                        [ rectangle pink 1000 1000
-                        , schilderij model.schilderij computer.time
-                            |> scale 2
-                            |> moveRight 190
-                            |> moveUp 30
-                        , laptop
-                            |> moveDown 200
-                        ]
+                    [ rectangle pink 1000 1000
+                    , schilderij model.schilderij computer.time
+                        |> scale 1.5
+                        |> moveRight 100
+                        |> moveUp 180
+                    , laptop
+                        |> moveDown 200
+                    ]
 
                 Slaapkamer ->
-                    clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Slaapkamer)
-                        [ rectangle pink 1000 1000
-                        , bed
-                        , kast (kleding model.clothesInCloset)
-                        , schilderij model.schilderij computer.time
-                        ]
+                    [ rectangle pink 1000 1000
+                    , bed
+                    , kast (kleding model.clothesInCloset)
+                        |> moveRight 300
+                        |> moveUp 120
+                    , schilderij model.schilderij computer.time
+                        |> scale 0.75
+                        |> moveUp 180
+                        |> moveLeft 300
+                    ]
 
                 Haarstudio ->
-                    clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Haarstudio)
-                        [ rectangle pink 1000 1000
-                        , stoel
-                        , koppen -- keuze (koppen |> met model.pruiken)
-                        ]
+                    [ rectangle pink 1000 1000
+                    , stoel
+                    , [ koppen
+                      , tafel
+                            |> moveDown 20
+                      ]
+                        |> group
+                        |> moveRight 300
+
+                    -- keuze (koppen |> met model.pruiken)
+                    ]
 
         kamerkiezer =
             group
-                [ kamer Slaapkamer
+                [ [ kast (group []) ]
+                    |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Slaapkamer)
                     |> when (model.kamer == Slaapkamer) (fade 0.2)
-                , kamer Haarstudio
-                    |> moveDown 1000
+                , [ kop |> scale 5 |> moveUp 50 ]
+                    |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Haarstudio)
+                    |> moveDown 500
                     |> when (model.kamer == Haarstudio) (fade 0.2)
-                , kamer Atelier
-                    |> moveDown 2000
+                , [ schilderij model.schilderij computer.time ]
+                    |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| GaNaar Atelier)
+                    |> moveDown 1000
                     |> when (model.kamer == Atelier) (fade 0.2)
                 ]
-                |> scale 0.2
+                |> scale 0.25
                 |> moveRight 600
                 |> moveUp 300
     in
     case model.kamer of
         Atelier ->
             [ kamer Atelier
+                |> group
             , programmeerVakMet model.schilderij model.typen computer.time
                 |> moveDown 200
-            , slimmeJana model.clothesBeingWorn
+            , slimmeJana model.pruik model.clothesBeingWorn
                 |> moveLeft 100
             , kamerkiezer
             ]
 
         Slaapkamer ->
             [ kamer Slaapkamer
-            , slimmeJana model.clothesBeingWorn
+                |> group
+            , slimmeJana model.pruik model.clothesBeingWorn
             , kamerkiezer
             ]
 
         Haarstudio ->
             [ kamer Haarstudio
-            , slimmeJana model.clothesBeingWorn
+                |> group
+            , slimmeJana model.pruik model.clothesBeingWorn
             , kamerkiezer
             ]
 
@@ -382,6 +400,9 @@ naamVan ding =
 
         Pruiken ->
             "pruiken"
+
+        Pruik i ->
+            "pruik " ++ String.fromInt i
 
         Walvis ->
             "walvis"
@@ -567,9 +588,6 @@ schilderij expressie tijd =
             |> moveUp 45
             |> moveRight 150
         ]
-        |> scale 0.75
-        |> moveUp 180
-        |> moveLeft 300
 
 
 walvis =
@@ -604,13 +622,46 @@ andereToekanTak =
 
 stoel =
     group
-        [ rectangle purple 10 100
+        [ oval purple 98 40 |> moveUp 40
+        , rectangle purple 100 80
+        , rectangle purple 100 20 |> moveDown 55
+        , rectangle grey 20 100 |> moveDown 120
+        , rectangle grey 100 20 |> moveDown 160
+        ]
+
+
+kop =
+    group
+        [ rectangle black 30 15 |> moveDown 52
+        , rectangle white 29 15 |> moveDown 52
+        , Doll.drawing ( Cartoon.Fabric.Solid "white", Cartoon.Part.Head ) |> drawing
         ]
 
 
 koppen =
     group
-        [ circle white 20 ]
+        [ [ kop ]
+            |> between (hairdo 0) identity
+            |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| Pruik 0)
+            |> moveLeft 100
+        , [ kop ]
+            |> between (hairdo 1) identity
+            |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| Pruik 1)
+            |> moveLeft 20
+        , [ kop ]
+            |> between (hairdo 2) identity
+            |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| Pruik 2)
+            |> moveRight 80
+        ]
+
+
+tafel =
+    group
+        [ rectangle grey 20 100 |> moveLeft 135
+        , rectangle grey 20 100 |> moveRight 135
+        , rectangle purple 300 20 |> moveUp 50
+        ]
+        |> moveDown 100
 
 
 bed =
@@ -647,8 +698,6 @@ kast inhoud =
             |> moveUp 5
         , inhoud
         ]
-        |> moveRight 300
-        |> moveUp 120
 
 
 availableClothingVariants clothing =
@@ -666,49 +715,94 @@ slimmeJana =
     girl
 
 
-girl kledingSelectie =
-    group
-        [ circle black 20
-            |> moveUp 120
-            |> moveRight 20
-        , circle black 45
-            --oval black 90 80
-            |> moveUp 155
-            |> moveRight 5
-        , Doll.drawing ( Cartoon.Fabric.Solid "brown", Cartoon.Part.Girl kledingSelectie )
-            |> drawing
-        , group
-            [ eye -0.1 2.5
-                |> moveLeft 12
-                |> rotate -5
-            , eye -0.5 3
-                |> moveRight 12
-                |> rotate 10
-            ]
-            |> moveUp 145
-            |> moveRight 10
-        , nose
-            |> moveUp 140
-            |> moveRight 10
-        , mouth
-            |> moveUp 115
-            |> moveRight 10
-        , hair
-            |> moveUp 165
-            |> moveRight 2
-            |> rotate 2
-
-        --, baret
-        --    |> rotate 10
-        --    |> moveUp 180
-        --    |> moveLeft 5
+girl pruik kledingSelectie =
+    [ Doll.drawing ( Cartoon.Fabric.Solid "brown", Cartoon.Part.Girl kledingSelectie )
+        |> drawing
+    , group
+        [ eye -0.1 2.5
+            |> moveLeft 12
+            |> rotate -5
+        , eye -0.5 3
+            |> moveRight 12
+            |> rotate 10
         ]
+        |> moveUp 145
+        |> moveRight 10
+    , nose
+        |> moveUp 140
+        |> moveRight 10
+    , mouth
+        |> moveUp 115
+        |> moveRight 10
+
+    --, baret
+    --    |> rotate 10
+    --    |> moveUp 180
+    --    |> moveLeft 5
+    ]
+        |> between (hairdo pruik) (moveUp 155)
+        |> group
         |> moveLeft 270
         |> scale 1.2
 
 
-hair =
-    oval black 60 23
+with something existing =
+    existing ++ [ something ]
+
+
+between ( back, front ) mutation existing =
+    (mutation back :: existing) ++ [ mutation front ]
+
+
+hairdo i =
+    case i of
+        0 ->
+            ( group []
+            , group
+                [ baret |> move -5 15 |> rotate 10
+                ]
+            )
+
+        1 ->
+            ( group
+                [ circle black 20
+                    |> moveDown 35
+                    |> moveRight 20
+                , circle black 10
+                    |> moveDown 55
+                    |> moveRight 20
+                , circle black 5
+                    |> moveDown 65
+                    |> moveRight 16
+                , circle black 45
+                    --oval black 90 80
+                    |> moveRight 5
+                ]
+            , group
+                [ oval black 60 23
+                    |> moveUp 10
+                    |> moveRight 2
+                    |> rotate 2
+                ]
+            )
+
+        2 ->
+            ( group
+                [ oval black 90 80
+                    |> moveRight 5
+                ]
+            , group
+                [ oval black 60 23
+                    |> moveUp 10
+                    |> moveRight 2
+                    |> rotate 2
+                ]
+            )
+
+        _ ->
+            ( group []
+            , group []
+            )
 
 
 baret =
@@ -733,7 +827,7 @@ nose =
 
 mouth =
     group
-        [ oval red 15 10
+        [ oval red 15 8
         , group
             [ circle red 3.5
                 |> moveLeft 3
@@ -877,6 +971,9 @@ update msg model =
                                 GaNaar kamer ->
                                     { model | kamer = kamer }
 
+                                Pruik i ->
+                                    { model | pruik = i }
+
                                 _ ->
                                     case model.kamer of
                                         Atelier ->
@@ -901,6 +998,9 @@ update msg model =
                                             model
 
                                         Cartoon.Part.Girl _ ->
+                                            model
+
+                                        Cartoon.Part.Head ->
                                             model
 
                                         _ ->
