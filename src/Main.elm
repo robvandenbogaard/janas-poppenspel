@@ -21,6 +21,8 @@ type alias Model =
     , schilderij : Expression
     , pruiken : Expression
     , pruik : Int
+    , lipstick : Color
+    , eyeshadow : Color
     , typen : Typen
     }
 
@@ -55,6 +57,8 @@ type ClickableThing
     = Schilderij
     | Pruiken
     | Pruik Int
+    | Lipstick Color
+    | EyeShadow Color
     | Walvis
     | Toekan
     | ToekanTak
@@ -97,6 +101,8 @@ main =
                             []
                             (Many [])
                   , pruik = 1
+                  , lipstick = red
+                  , eyeshadow = black
                   , typen = Typen ( 0, 0, 0 ) ""
                   }
                 , Cmd.map PlaygroundMsg cmd
@@ -172,6 +178,9 @@ scene model computer memory =
                 Haarstudio ->
                     [ rectangle pink 1000 1000
                     , stoel
+                    , makeUpDoos
+                        |> moveUp 250
+                        |> moveRight 200
                     , [ koppen
                       , tafel
                             |> moveDown 20
@@ -206,7 +215,7 @@ scene model computer memory =
                 |> group
             , programmeerVakMet model.schilderij model.typen computer.time
                 |> moveDown 200
-            , slimmeJana model.pruik model.clothesBeingWorn
+            , slimmeJana model.pruik model.lipstick model.eyeshadow model.clothesBeingWorn
                 |> moveLeft 100
             , kamerkiezer
             ]
@@ -214,14 +223,14 @@ scene model computer memory =
         Slaapkamer ->
             [ kamer Slaapkamer
                 |> group
-            , slimmeJana model.pruik model.clothesBeingWorn
+            , slimmeJana model.pruik model.lipstick model.eyeshadow model.clothesBeingWorn
             , kamerkiezer
             ]
 
         Haarstudio ->
             [ kamer Haarstudio
                 |> group
-            , slimmeJana model.pruik model.clothesBeingWorn
+            , slimmeJana model.pruik model.lipstick model.eyeshadow model.clothesBeingWorn
             , kamerkiezer
             ]
 
@@ -403,6 +412,12 @@ naamVan ding =
 
         Pruik i ->
             "pruik " ++ String.fromInt i
+
+        Lipstick _ ->
+            "lipstick"
+
+        EyeShadow _ ->
+            "eye shadow"
 
         Walvis ->
             "walvis"
@@ -630,6 +645,50 @@ stoel =
         ]
 
 
+makeUpDoos =
+    group
+        [ rectangle brown 600 250
+        , rectangle darkBrown 580 230
+        , rectangle darkerBrown 570 220 |> move -1 -1
+        , [ lipstick red
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| Lipstick red)
+          , lipstick orange
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| Lipstick orange)
+          , lipstick darkBlue
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| Lipstick darkBlue)
+          ]
+            |> List.indexedMap
+                (\i shape ->
+                    shape
+                        |> scale 2
+                        |> moveRight (toFloat i * 60)
+                )
+            |> group
+            |> move 120 -30
+        , [ [ eyeshadow black ]
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow black)
+          , [ eyeshadow darkBlue ]
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow darkBlue)
+          , [ eyeshadow lightBlue ]
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow lightBlue)
+          , [ eyeshadow orange ]
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow orange)
+          , [ eyeshadow yellow ]
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow yellow)
+          , [ eyeshadow darkRed ]
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow darkRed)
+          ]
+            |> List.indexedMap
+                (\i shape ->
+                    shape
+                        |> scale 4
+                        |> move (toFloat (modBy 3 i * 90)) -(toFloat (i // 3 * 90))
+                )
+            |> group
+            |> move -220 40
+        ]
+
+
 kop =
     group
         [ rectangle black 30 15 |> moveDown 52
@@ -715,14 +774,14 @@ slimmeJana =
     girl
 
 
-girl pruik kledingSelectie =
+girl pruik lipcolor eyecolor kledingSelectie =
     [ Doll.drawing ( Cartoon.Fabric.Solid "brown", Cartoon.Part.Girl kledingSelectie )
         |> drawing
     , group
-        [ eye -0.1 2.5
+        [ eye eyecolor -0.1 2.5
             |> moveLeft 12
             |> rotate -5
-        , eye -0.5 3
+        , eye eyecolor -0.5 3
             |> moveRight 12
             |> rotate 10
         ]
@@ -731,7 +790,7 @@ girl pruik kledingSelectie =
     , nose
         |> moveUp 140
         |> moveRight 10
-    , mouth
+    , mouth lipcolor
         |> moveUp 115
         |> moveRight 10
 
@@ -825,13 +884,13 @@ nose =
         ]
 
 
-mouth =
+mouth lipcolor =
     group
-        [ oval red 15 8
+        [ oval lipcolor 15 8
         , group
-            [ circle red 3.5
+            [ circle lipcolor 3.5
                 |> moveLeft 3
-            , circle red 3.5
+            , circle lipcolor 3.5
                 |> moveRight 3
             ]
             |> moveUp 3.5
@@ -840,9 +899,9 @@ mouth =
         ]
 
 
-eye lookUp lookRight =
+eye color lookUp lookRight =
     group
-        [ eyeshadow
+        [ eyeshadow color
         , eyeball
         , group
             [ iris
@@ -853,9 +912,14 @@ eye lookUp lookRight =
         |> scale 0.85
 
 
-eyeshadow =
-    oval black 20 12
-        |> moveUp 0.5
+eyeshadow color =
+    if color == black then
+        oval black 20 12
+            |> moveUp 0.5
+
+    else
+        oval color 20 15
+            |> moveUp 1
 
 
 eyeball =
@@ -868,6 +932,13 @@ iris =
 
 pupil =
     circle black 3.5
+
+
+lipstick color =
+    [ oval color 17 60
+        |> moveUp 20
+    , rectangle white 20 50
+    ]
 
 
 stof currentFabric fabric =
@@ -973,6 +1044,12 @@ update msg model =
 
                                 Pruik i ->
                                     { model | pruik = i }
+
+                                Lipstick c ->
+                                    { model | lipstick = c }
+
+                                EyeShadow c ->
+                                    { model | eyeshadow = c }
 
                                 _ ->
                                     case model.kamer of
