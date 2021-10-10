@@ -673,10 +673,10 @@ makeUpDoos =
                 |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow lightBlue)
           , [ eyeshadow orange ]
                 |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow orange)
-          , [ eyeshadow yellow ]
-                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow yellow)
-          , [ eyeshadow darkRed ]
-                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow darkRed)
+          , [ eyeshadow green ]
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow green)
+          , [ eyeshadow darkGreen ]
+                |> clickableGroup (Playground.Clicked <| Cartoon.Part.ClickedGroup <| EyeShadow darkGreen)
           ]
             |> List.indexedMap
                 (\i shape ->
@@ -902,7 +902,13 @@ mouth lipcolor =
 eye color lookUp lookRight =
     group
         [ eyeshadow color
-        , eyeball
+        , if color == black then
+            eyeball
+                |> moveDown 0.3
+
+          else
+            oval white 20 9
+                |> moveDown 0.8
         , group
             [ iris
             , pupil
