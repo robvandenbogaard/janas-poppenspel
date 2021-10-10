@@ -1,15 +1,25 @@
 module Cartoon.Doll exposing
-    ( attribution
+    ( Doll
+    , addClothes
+    , attribution
     , drawing
     , girl
     )
 
+import Cartoon exposing (..)
 import Cartoon.Fabric as Fabric exposing (Fabric(..))
 import Cartoon.Part as Part exposing (Part(..))
 import Playground
 import Svg exposing (Svg)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
+
+
+type alias Doll =
+    { shoulders : Location
+    , hips : Location
+    , feet : Location
+    }
 
 
 attribution =
@@ -19,48 +29,10 @@ attribution =
     }
 
 
-coords ( x, y ) =
-    String.fromFloat x ++ "," ++ String.fromFloat y
-
-
-startFrom ( x, y ) =
-    "M " ++ coords ( x, y )
-
-
-moveTo ( x, y ) path =
-    path ++ " " ++ startFrom ( x, y )
-
-
-moveToRel ( x, y ) path =
-    path ++ " " ++ "m " ++ coords ( x, y )
-
-
-lineTo points path =
-    "L"
-        :: List.map coords points
-        |> String.join " "
-        |> (++) path
-
-
-lineToRel points path =
-    "l"
-        :: List.map coords points
-        |> String.join " "
-        |> (++) path
-
-
-cubic points path =
-    "C"
-        :: List.map coords points
-        |> String.join " "
-        |> (++) path
-
-
-cubicRel points path =
-    "c"
-        :: List.map coords points
-        |> String.join " "
-        |> (++) path
+addClothes clothes outfit =
+    clothes
+        :: List.reverse outfit
+        |> List.reverse
 
 
 build =
@@ -151,7 +123,7 @@ drawing ( fabric, p ) =
 
         Shirt ->
             group
-                "none"
+                "black"
                 [ transform "translate(0,-30)" ]
                 [ Svg.path [ d build.shirt ] [] ]
 
@@ -159,7 +131,7 @@ drawing ( fabric, p ) =
             group "black" [] []
 
         Skirt ->
-            group "none"
+            group "black"
                 []
                 [ Svg.path [ d build.skirt ] [] ]
 
@@ -168,6 +140,13 @@ drawing ( fabric, p ) =
 
         HairClip ->
             group "black" [] []
+
+        Hair coupe ->
+            group
+                "none"
+                []
+                [ Svg.image [ xlinkHref "assets/hair/grass.png", x "-25", y "-25", width "50", height "50" ] []
+                ]
 
 
 girl : Fabric -> List ( Fabric, Part ) -> Svg (Playground.Msg (Part.Msg a))

@@ -1,5 +1,6 @@
 module Cartoon.Part exposing
-    ( Msg(..)
+    ( Coupe(..)
+    , Msg(..)
     , Part(..)
     , list
     , show
@@ -18,6 +19,11 @@ type Part
     | Sleeves
     | HairClip
     | Boots
+    | Hair Coupe
+
+
+type Coupe
+    = Grass
 
 
 type Msg id

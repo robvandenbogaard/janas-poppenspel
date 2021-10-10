@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser
 import Browser.Events
 import Cartoon
+import Cartoon.Doll as Doll
 import Cartoon.Fabric exposing (Fabric(..))
 import Cartoon.Part exposing (Part)
 import Html exposing (Html)
@@ -118,8 +119,10 @@ view model =
         [ background pink
             [ Html.h1
                 [ Attr.style "color" "salmon"
+                , Attr.style "margin" "0"
+                , Attr.style "padding" "0.5em 1em 0 1em"
                 , Attr.style "position" "fixed"
-                , Attr.style "margin-left" "1em"
+                , Attr.style "top" "0"
                 ]
                 [ Html.text "Jana's poppenspel" ]
             , Playground.componentView model.playground (scene model)
@@ -147,7 +150,7 @@ scene model computer memory =
                         , schilderij model.schilderij computer.time
                             |> scale 2
                             |> moveRight 190
-                            |> moveUp 50
+                            |> moveUp 30
                         , laptop
                             |> moveDown 200
                         ]
@@ -664,27 +667,130 @@ slimmeJana =
 
 
 girl kledingSelectie =
-    Cartoon.drawing ( Cartoon.Fabric.Solid "brown", Cartoon.Part.Girl kledingSelectie )
-        |> drawing
+    group
+        [ circle black 20
+            |> moveUp 120
+            |> moveRight 20
+        , circle black 45
+            --oval black 90 80
+            |> moveUp 155
+            |> moveRight 5
+        , Doll.drawing ( Cartoon.Fabric.Solid "brown", Cartoon.Part.Girl kledingSelectie )
+            |> drawing
+        , group
+            [ eye -0.1 2.5
+                |> moveLeft 12
+                |> rotate -5
+            , eye -0.5 3
+                |> moveRight 12
+                |> rotate 10
+            ]
+            |> moveUp 145
+            |> moveRight 10
+        , nose
+            |> moveUp 140
+            |> moveRight 10
+        , mouth
+            |> moveUp 115
+            |> moveRight 10
+        , hair
+            |> moveUp 165
+            |> moveRight 2
+            |> rotate 2
+
+        --, baret
+        --    |> rotate 10
+        --    |> moveUp 180
+        --    |> moveLeft 5
+        ]
         |> moveLeft 270
         |> scale 1.2
+
+
+hair =
+    oval black 60 23
+
+
+baret =
+    group
+        [ oval lightBlue 60 25
+            |> rotate 15
+        , oval blue 6 15
+            |> moveUp 9
+            |> moveLeft 2
+        ]
+
+
+nose =
+    group
+        [ Cartoon.startFrom ( 0, 0 )
+            |> Cartoon.cubicRel [ ( 0, 10 ), ( 3, 12 ), ( 3, 9 ) ]
+            |> Cartoon.cubicRel [ ( 1, -1 ), ( 5, 4 ), ( 0, 7 ) ]
+            |> Cartoon.line black
+            |> drawing
+        ]
+
+
+mouth =
+    group
+        [ oval red 15 10
+        , group
+            [ circle red 3.5
+                |> moveLeft 3
+            , circle red 3.5
+                |> moveRight 3
+            ]
+            |> moveUp 3.5
+        , oval darkRed 15 3
+            |> moveUp 1
+        ]
+
+
+eye lookUp lookRight =
+    group
+        [ eyeshadow
+        , eyeball
+        , group
+            [ iris
+            , pupil
+            ]
+            |> move lookRight lookUp
+        ]
+        |> scale 0.85
+
+
+eyeshadow =
+    oval black 20 12
+        |> moveUp 0.5
+
+
+eyeball =
+    oval white 20 10
+
+
+iris =
+    circle blue 5
+
+
+pupil =
+    circle black 3.5
 
 
 stof currentFabric fabric =
     case currentFabric of
         Nothing ->
-            drawing (Cartoon.drawing ( fabric, Cartoon.Part.Patch ))
+            drawing (Doll.drawing ( fabric, Cartoon.Part.Patch ))
 
         Just f ->
             if f == fabric then
                 group
-                    [ drawing (Cartoon.drawing ( Cartoon.Fabric.Solid "salmon", Cartoon.Part.Patch ))
+                    [ drawing (Doll.drawing ( Cartoon.Fabric.Solid "salmon", Cartoon.Part.Patch ))
                         |> scale 1.1
-                    , drawing (Cartoon.drawing ( fabric, Cartoon.Part.Patch ))
+                    , drawing (Doll.drawing ( fabric, Cartoon.Part.Patch ))
                     ]
 
             else
-                drawing (Cartoon.drawing ( fabric, Cartoon.Part.Patch ))
+                drawing (Doll.drawing ( fabric, Cartoon.Part.Patch ))
 
 
 stoffen geselecteerdeStof =
@@ -711,7 +817,7 @@ kleding selectie =
                 case part of
                     Cartoon.Part.Skirt ->
                         ( i + 1
-                        , (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Skirt ))
+                        , (drawing (Doll.drawing ( fabric, Cartoon.Part.Skirt ))
                             |> moveLeft (50 + i * ox)
                             |> moveUp 20
                           )
@@ -720,7 +826,7 @@ kleding selectie =
 
                     Cartoon.Part.Boots ->
                         ( i + 1
-                        , (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Boots ))
+                        , (drawing (Doll.drawing ( fabric, Cartoon.Part.Boots ))
                             |> moveRight (100 + i * ox)
                             |> moveUp 10
                           )
@@ -729,7 +835,7 @@ kleding selectie =
 
                     Cartoon.Part.Shirt ->
                         ( i + 1
-                        , (drawing (Cartoon.drawing ( fabric, Cartoon.Part.Shirt ))
+                        , (drawing (Doll.drawing ( fabric, Cartoon.Part.Shirt ))
                             |> moveRight (50 + i * ox)
                             |> moveUp 70
                           )
@@ -804,7 +910,7 @@ update msg model =
                                                         List.filter (\c -> c /= ( clickedFabric, clickedPart )) model.clothesInCloset
                                                     , clothesBeingWorn =
                                                         Debug.log "clothes" <|
-                                                            Cartoon.addClothes ( clickedFabric, clickedPart ) model.clothesBeingWorn
+                                                            Doll.addClothes ( clickedFabric, clickedPart ) model.clothesBeingWorn
                                                 }
 
                                             else

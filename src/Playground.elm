@@ -1462,9 +1462,6 @@ render screen shapes =
     in
     svg
         [ viewBox (String.fromFloat x ++ " " ++ String.fromFloat y ++ " " ++ String.fromFloat w ++ " " ++ String.fromFloat h)
-        , H.style "position" "fixed"
-        , H.style "top" "0"
-        , H.style "left" "0"
         , width "100%"
         , height "100%"
         ]
